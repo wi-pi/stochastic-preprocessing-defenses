@@ -25,9 +25,12 @@ class CIFAR10ResNet(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs)
         return [optimizer], [scheduler]
 
+    def forward(self, x):
+        return self.model(x)
+
     def loss(self, batch, mode):
         x, y = batch
-        logits = self.model(x)
+        logits = self.forward(x)
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=-1)
 
