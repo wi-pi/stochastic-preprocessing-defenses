@@ -8,10 +8,10 @@ from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
 from art.estimators.classification import PyTorchClassifier
 from torchvision.datasets import CIFAR10
 
-from src.defenses import EOTDefense
+from src.defenses import EOT, RandomPickOne
 from src.models import CIFAR10ResNet
 
-DEFENSES = T.Compose([
+DEFENSES = RandomPickOne([
     T.ColorJitter(brightness=0.05, contrast=0.05, saturation=0.05),
     T.RandomRotation(degrees=5),
     T.RandomResizedCrop(size=(32, 32), scale=(0.8, 1.0), ratio=(0.9, 1.1)),
@@ -39,7 +39,7 @@ def parse_args():
 def get_wrapper(model: nn.Module, nb_samples: int):
     wrapper = PyTorchClassifier(
         model, loss=nn.CrossEntropyLoss(), input_shape=(3, 32, 32), nb_classes=10,
-        preprocessing_defences=EOTDefense(nb_samples=nb_samples, transforms=DEFENSES)
+        preprocessing_defences=EOT(transform=DEFENSES, nb_samples=nb_samples)
     )
     return wrapper
 
