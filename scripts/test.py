@@ -12,8 +12,11 @@ from src.defenses import EOTDefense
 from src.models import CIFAR10ResNet
 
 DEFENSES = T.Compose([
-    T.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-    T.RandomRotation(degrees=90),
+    T.ColorJitter(brightness=0.05, contrast=0.05, saturation=0.05),
+    T.RandomRotation(degrees=5),
+    T.RandomResizedCrop(size=(32, 32), scale=(0.8, 1.0), ratio=(0.9, 1.1)),
+    T.RandomRotation(degrees=5),
+    T.GaussianBlur(kernel_size=5, sigma=(0.01, 0.1)),
 ])
 
 
@@ -26,8 +29,8 @@ def parse_args():
     parser.add_argument('-g', '--gpu', type=int, default=0)
     # attack
     parser.add_argument('--eps', type=float, default=8 / 255)
-    parser.add_argument('--lr', type=float, default=1 / 255)
-    parser.add_argument('--step', type=int, default=20)
+    parser.add_argument('--lr', type=float, default=2 / 255)
+    parser.add_argument('--step', type=int, default=10)
     parser.add_argument('--eot', type=int, default=1)
     args = parser.parse_args()
     return args
