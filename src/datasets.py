@@ -22,8 +22,7 @@ class CIFAR10DataModule(pl.LightningDataModule):
             T.RandomCrop(32, padding=4),
             T.RandomHorizontalFlip(),
             T.ToTensor(),
-        ]
-        )
+        ])
 
         self.test_transform = T.Compose([
             T.ToTensor(),
