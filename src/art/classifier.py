@@ -4,6 +4,8 @@ import art
 import torch
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 
+from src.defenses import RandomizedPreprocessor
+
 
 class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
     """
@@ -25,9 +27,8 @@ class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
         y = y.clone().detach()
 
         # Forward pass: preprocessing + model
-        x_processed, y_processed = self._apply_preprocessing(x, y, fit=False, no_grad=True)
-        x_processed.requires_grad = True
-        y_processed = self.reduce_labels(y_processed)
+        x_processed = self._apply_preprocessing_exact(x, stateful=True).requires_grad_(True)
+        y_processed = self.reduce_labels(y)
         model_outputs = self._model(x_processed)
 
         # Backward pass: model
@@ -37,7 +38,7 @@ class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
 
         # Forward pass: preprocessing (BPDA)
         x.requires_grad = True
-        x_processed = self._apply_preprocessing_estimate(x)
+        x_processed = self._apply_preprocessing_estimate(x, stateful=True)
 
         # Backward pass: preprocessing (BPDA)
         x_processed.backward(grads)
@@ -49,7 +50,15 @@ class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
 
         return grads
 
-    def _apply_preprocessing_estimate(self, x: torch.Tensor) -> torch.Tensor:
+    def _apply_preprocessing_exact(self, x: torch.Tensor, stateful: bool = False) -> torch.Tensor:
+        with torch.no_grad():
+            for preprocess in self.preprocessing_operations:
+                kwargs = {'stateful': stateful} if isinstance(preprocess, RandomizedPreprocessor) else {}
+                x, _ = preprocess.forward(x, y=None, **kwargs)
+        return x
+
+    def _apply_preprocessing_estimate(self, x: torch.Tensor, stateful: bool = False) -> torch.Tensor:
         for preprocess in self.preprocessing_operations:
-            x = preprocess.estimate_forward(x)
+            kwargs = {'stateful': stateful} if isinstance(preprocess, RandomizedPreprocessor) else {}
+            x = preprocess.estimate_forward(x, **kwargs)
         return x
