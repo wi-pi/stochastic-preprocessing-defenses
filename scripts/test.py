@@ -1,23 +1,16 @@
 import argparse
 import os
+from typing import Optional
 
 import numpy as np
 import torch.nn as nn
-import torchvision.transforms as T
 from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
-from art.estimators.classification import PyTorchClassifier
+from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from torchvision.datasets import CIFAR10
 
-from src.defenses import EOT, RandomPickOne
+from src.art.classifier import PyTorchClassifier
+from src.defenses.base import DEFENSES
 from src.models import CIFAR10ResNet
-
-DEFENSES = RandomPickOne([
-    T.ColorJitter(brightness=0.05, contrast=0.05, saturation=0.05),
-    T.RandomRotation(degrees=5),
-    T.RandomResizedCrop(size=(32, 32), scale=(0.8, 1.0), ratio=(0.9, 1.1)),
-    T.RandomRotation(degrees=5),
-    T.GaussianBlur(kernel_size=5, sigma=(0.01, 0.1)),
-])
 
 
 def parse_args():
@@ -31,15 +24,17 @@ def parse_args():
     parser.add_argument('--eps', type=float, default=8 / 255)
     parser.add_argument('--lr', type=float, default=2 / 255)
     parser.add_argument('--step', type=int, default=10)
-    parser.add_argument('--eot', type=int, default=1)
+    parser.add_argument('--adaptive', action='store_true')
+    # defense
+    parser.add_argument('-d', '--defense', type=str, choices=DEFENSES, required=True)
     args = parser.parse_args()
     return args
 
 
-def get_wrapper(model: nn.Module, nb_samples: int):
+def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None):
     wrapper = PyTorchClassifier(
-        model, loss=nn.CrossEntropyLoss(), input_shape=(3, 32, 32), nb_classes=10,
-        preprocessing_defences=EOT(transform=DEFENSES, nb_samples=nb_samples)
+        model, loss=nn.CrossEntropyLoss(), input_shape=(3, 32, 32), nb_classes=10, clip_values=(0, 1),
+        preprocessing_defences=defense,
     )
     return wrapper
 
@@ -53,10 +48,15 @@ def main(args):
     x_test = np.array(dataset.data / 255, dtype=np.float32).transpose((0, 3, 1, 2))  # to channel first
     y_test = np.array(dataset.targets, dtype=np.int)
 
+    # Load defense
+    defense_cls = DEFENSES[args.defense]
+    defense = defense_cls()
+    print('using defense', defense)
+
     # Load model
     model = CIFAR10ResNet.load_from_checkpoint(args.load)
-    model_predict = get_wrapper(model, nb_samples=1)
-    model_attack = get_wrapper(model, nb_samples=args.eot)
+    model_predict = get_wrapper(model, defense=defense)
+    model_attack = get_wrapper(model, defense=defense if args.adaptive else None)
 
     # Test benign
     preds = model_predict.predict(x_test, batch_size=args.batch)

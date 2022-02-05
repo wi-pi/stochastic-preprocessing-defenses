@@ -1,6 +1,6 @@
 import torch
 
-from src.defenses.base import Preprocessor
+from src.defenses.base import DEFENSES, Preprocessor
 
 
 def _compress(x: torch.Tensor, quality: int) -> torch.Tensor:
@@ -15,7 +15,9 @@ def _compress(x: torch.Tensor, quality: int) -> torch.Tensor:
     return x_jpeg
 
 
+@DEFENSES
 class JpegCompression(Preprocessor):
+    params = ['quality']
 
     def __init__(self, quality: int = 50):
         super().__init__()
