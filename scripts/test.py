@@ -9,7 +9,7 @@ from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from torchvision.datasets import CIFAR10
 
 from src.art.classifier import PyTorchClassifier
-from src.defenses.base import DEFENSES
+from src.defenses import EOT, DEFENSES
 from src.models import CIFAR10ResNet
 
 
@@ -18,15 +18,17 @@ def parse_args():
     # basic
     parser.add_argument('--load', type=str, default='static/logs/version_0/checkpoints/epoch38-acc0.929.ckpt')
     parser.add_argument('--data-dir', type=str, default='static/datasets')
-    parser.add_argument('-b', '--batch', type=int, default=512)
+    parser.add_argument('-b', '--batch', type=int, default=1000)
     parser.add_argument('-g', '--gpu', type=int, default=0)
     # attack
     parser.add_argument('--eps', type=float, default=8 / 255)
     parser.add_argument('--lr', type=float, default=2 / 255)
     parser.add_argument('--step', type=int, default=10)
-    parser.add_argument('--adaptive', action='store_true')
+    parser.add_argument('-a', '--adaptive', action='store_true')
     # defense
     parser.add_argument('-d', '--defense', type=str, choices=DEFENSES, required=True)
+    parser.add_argument('-r', '--randomized', action='store_true')
+    parser.add_argument('--eot', type=int, default=1)
     args = parser.parse_args()
     return args
 
@@ -34,7 +36,7 @@ def parse_args():
 def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None):
     wrapper = PyTorchClassifier(
         model, loss=nn.CrossEntropyLoss(), input_shape=(3, 32, 32), nb_classes=10, clip_values=(0, 1),
-        preprocessing_defences=defense,
+        preprocessing=None, preprocessing_defences=defense,
     )
     return wrapper
 
@@ -42,15 +44,20 @@ def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None)
 def main(args):
     # Basic
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
+    args.batch /= args.eot
 
     # Load test data
     dataset = CIFAR10(args.data_dir, train=False)
     x_test = np.array(dataset.data / 255, dtype=np.float32).transpose((0, 3, 1, 2))  # to channel first
     y_test = np.array(dataset.targets, dtype=np.int)
 
+    x_test = x_test[:1000]
+    y_test = y_test[:1000]
+
     # Load defense
     defense_cls = DEFENSES[args.defense]
-    defense = defense_cls()
+    defense = defense_cls(randomized=args.randomized)
+    defense = EOT(defense, nb_samples=args.eot)
     print('using defense', defense)
 
     # Load model
