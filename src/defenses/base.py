@@ -35,13 +35,14 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
         return cls(randomized=False, **params)
 
     @classmethod
-    def as_randomized(cls):
+    def as_randomized(cls, **params):
         """
         Realize a parameter-randomized defense.
 
+        :param params: Other necessary parameters.
         :return: A parameter-randomized defense.
         """
-        return cls(randomized=True)
+        return cls(randomized=True, **params)
 
     def forward(
         self,
@@ -140,9 +141,8 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
 
         return params
 
-    @staticmethod
     @abc.abstractmethod
-    def get_random_params() -> dict:
+    def get_random_params(self) -> dict:
         """
         Generate a random set of parameters for this defense.
 

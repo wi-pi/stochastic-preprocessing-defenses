@@ -31,8 +31,7 @@ class JpegCompression(RandomizedPreprocessor):
     def _estimate_forward_one(self, x: torch.Tensor, **params) -> torch.Tensor:
         return x
 
-    @staticmethod
-    def get_random_params() -> dict:
+    def get_random_params(self) -> dict:
         params = {
             'quality': randint(55, 75),
         }

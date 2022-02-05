@@ -17,6 +17,15 @@ class Registry(type):
         format_string += '}'
         return format_string
 
+    def keys(cls):
+        return cls.entries.keys()
+
+    def values(cls):
+        return cls.entries.values()
+
+    def items(cls):
+        return cls.entries.items()
+
     def __iter__(cls):
         return iter(cls.entries)
 
