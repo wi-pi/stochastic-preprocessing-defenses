@@ -3,6 +3,7 @@ from random import randint
 import torch
 
 from src.defenses.base import DEFENSES, RandomizedPreprocessor
+from src.utils import get_params
 
 
 def _compress(x: torch.Tensor, quality: int) -> torch.Tensor:
@@ -21,9 +22,8 @@ def _compress(x: torch.Tensor, quality: int) -> torch.Tensor:
 class JpegCompression(RandomizedPreprocessor):
     params = ['quality']
 
-    @classmethod
-    def as_fixed(cls, quality: int = 50):
-        return cls(randomized=False, quality=quality)
+    def __init__(self, randomized: bool, quality: int = 50):
+        super().__init__(**get_params())
 
     def _forward_one(self, x: torch.Tensor, **params) -> torch.Tensor:
         return _compress(x, **params)

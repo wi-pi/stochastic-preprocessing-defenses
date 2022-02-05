@@ -1,3 +1,6 @@
+import inspect
+
+
 class Registry(type):
     entries: dict
 
@@ -16,3 +19,10 @@ class Registry(type):
 
     def __iter__(cls):
         return iter(cls.entries)
+
+
+def get_params(start: int = 1):
+    frame = inspect.currentframe().f_back
+    args, _, _, values = inspect.getargvalues(frame)
+    params = {k: values[k] for k in args[start:]}
+    return params
