@@ -44,20 +44,21 @@ def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None)
 def main(args):
     # Basic
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
-    args.batch /= args.eot
+    args.batch = max(args.batch // args.eot, 1)
 
     # Load test data
     dataset = CIFAR10(args.data_dir, train=False)
     x_test = np.array(dataset.data / 255, dtype=np.float32).transpose((0, 3, 1, 2))  # to channel first
     y_test = np.array(dataset.targets, dtype=np.int)
 
-    x_test = x_test[:1000]
-    y_test = y_test[:1000]
+    x_test = x_test[::10]
+    y_test = y_test[::10]
 
     # Load defense
     defense_cls = DEFENSES[args.defense]
     defense = defense_cls(randomized=args.randomized)
-    defense = EOT(defense, nb_samples=args.eot)
+    if args.eot > 1:
+        defense = EOT(defense, nb_samples=args.eot)
     print('using defense', defense)
 
     # Load model
