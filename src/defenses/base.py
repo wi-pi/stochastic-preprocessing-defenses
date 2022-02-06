@@ -63,7 +63,7 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
         x_processed = torch.zeros_like(x)
         for i in range(x.shape[0]):
             params = self._get_params(save=stateful)
-            x_processed[i] = self._forward_one(x[i], **params)
+            x_processed[i] = self._forward_one(x[i], **params).clip(0, 1)
 
         return x_processed, y
 
@@ -87,7 +87,7 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
         x_processed = torch.zeros_like(x)
         for i in range(x.shape[0]):
             params = self._get_params(load=stateful)
-            x_processed[i] = self._estimate_forward_one(x[i], **params)
+            x_processed[i] = self._estimate_forward_one(x[i], **params).clip(0, 1)
 
         return x_processed
 
