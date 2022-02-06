@@ -106,14 +106,13 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
         """
         Preprocess one sample with the given parameters (BPDA).
 
-        By default, we assume a differentiable forward pass.
-        If not, this should be changed to the identity or a better approximate function.
+        By default, we use the identity function as in BPDA.
 
         :param x: One input [1, channel, height, width]
         :param params: A given set of parameters.
         :return: Processed input.
         """
-        return self._forward_one(x, **params)
+        return x
 
     def _get_params(self, save: bool = False, load: bool = False) -> dict:
         """

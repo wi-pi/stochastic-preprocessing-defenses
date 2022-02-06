@@ -20,10 +20,6 @@ class ColorReduction(RandomizedPreprocessor):
         x = torch.round(x * scales) / scales
         return x
 
-    # noinspection PyMethodOverriding
-    def _estimate_forward_one(self, x: torch.Tensor, scales: List[int]) -> torch.Tensor:
-        return x
-
     def get_random_params(self) -> dict:
         if np.random.randint(2):
             scales = np.random.randint(low=8, high=200, size=(3, 1, 1))
