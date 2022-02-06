@@ -10,6 +10,7 @@ import torch
 import torchvision.transforms.functional as F
 from PIL import Image
 from scipy import fftpack
+from skimage import filters, morphology
 from skimage import transform
 
 from src.defenses.base import DEFENSES, RandomizedPreprocessor
@@ -106,9 +107,9 @@ class NoiseInjection(RandomizedPreprocessor):
 
 @DEFENSES
 class FFTPerturbation(RandomizedPreprocessor):
-    params = []
+    params = ['mask', 'fraction']
 
-    def __init__(self, randomized: bool):
+    def __init__(self, randomized: bool, mask: np.ndarray = None, fraction: np.ndarray = None):
         super().__init__(**get_params())
 
     # noinspection PyMethodOverriding
@@ -141,4 +142,77 @@ class FFTPerturbation(RandomizedPreprocessor):
             'mask': np.random.randint(low=0, high=2, size=3),
             'fraction': 0.95 * np.random.random(3)
         }
+        return params
+
+
+@DEFENSES
+class GaussianBlur(RandomizedPreprocessor):
+    params = ['sigma']
+
+    def __init__(self, randomized: bool, sigma: np.ndarray = None):
+        super().__init__(**get_params())
+
+    # noinspection PyMethodOverriding
+    def _forward_one(self, x: torch.Tensor, sigma: np.ndarray) -> torch.Tensor:
+        x_np = x.cpu().clone().numpy().transpose(1, 2, 0)
+        x_np = skimage.filters.gaussian(x_np, sigma=sigma, channel_axis=2)
+        return torch.from_numpy(x_np.transpose(2, 0, 1)).type_as(x)
+
+    def get_random_params(self) -> dict:
+        if np.random.randint(2):
+            sigma = 0.1 + np.random.random(3) * 2
+        else:
+            sigma = 0.1 + np.random.random(1).repeat(3) * 2
+
+        params = {'sigma': sigma}
+        return params
+
+
+@DEFENSES
+class MedianBlur(RandomizedPreprocessor):
+    params = ['radius']
+
+    def __init__(self, randomized: bool, radius: np.ndarray = (2, 2, 2)):
+        super().__init__(**get_params())
+
+    # noinspection PyMethodOverriding
+    def _forward_one(self, x: torch.Tensor, radius: np.ndarray) -> torch.Tensor:
+        x_np = x.cpu().clone().numpy().transpose(1, 2, 0)
+        for i in range(3):
+            mask = morphology.disk(radius[i])
+            x_np[..., i] = filters.rank.median(skimage.util.img_as_ubyte(x_np[..., i]), mask) / 255.0
+        return torch.from_numpy(x_np.transpose(2, 0, 1)).type_as(x)
+
+    def get_random_params(self) -> dict:
+        if np.random.randint(2):
+            radius = np.random.randint(low=2, high=5, size=3)
+        else:
+            radius = np.random.randint(low=2, high=5, size=1).repeat(3)
+
+        params = {'radius': radius}
+        return params
+
+
+@DEFENSES
+class MeanFilter(RandomizedPreprocessor):
+    params = ['radius']
+
+    def __init__(self, randomized: bool, radius: np.ndarray = (2, 2, 2)):
+        super().__init__(**get_params())
+
+    # noinspection PyMethodOverriding
+    def _forward_one(self, x: torch.Tensor, radius: np.ndarray) -> torch.Tensor:
+        x_np = x.cpu().clone().numpy().transpose(1, 2, 0)
+        for i in range(3):
+            mask = morphology.disk(radius[i])
+            x_np[..., i] = filters.rank.mean(skimage.util.img_as_ubyte(x_np[..., i]), mask) / 255.0
+        return torch.from_numpy(x_np.transpose(2, 0, 1)).type_as(x)
+
+    def get_random_params(self) -> dict:
+        if np.random.randint(2):
+            radius = np.random.randint(low=2, high=3, size=3)
+        else:
+            radius = np.random.randint(low=2, high=3, size=1).repeat(3)
+
+        params = {'radius': radius}
         return params
