@@ -113,7 +113,7 @@ class FFTPerturbation(RandomizedPreprocessor):
 
     # noinspection PyMethodOverriding
     def _forward_one(self, x: torch.Tensor, mask: np.ndarray, fraction: np.ndarray) -> torch.Tensor:
-        x_np = x.cpu().numpy().transpose(1, 2, 0)
+        x_np = x.cpu().clone().numpy().transpose(1, 2, 0)
 
         r, c, _ = x_np.shape
         point_factor = (1.02 - 0.98) * np.random.random((r, c)) + 0.98
@@ -139,6 +139,6 @@ class FFTPerturbation(RandomizedPreprocessor):
     def get_random_params(self) -> dict:
         params = {
             'mask': np.random.randint(low=0, high=2, size=3),
-            'fraction': (0.95 - 0.0) * np.random.random(3)
+            'fraction': 0.95 * np.random.random(3)
         }
         return params
