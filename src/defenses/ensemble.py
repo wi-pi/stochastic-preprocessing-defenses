@@ -23,7 +23,7 @@ class Ensemble(RandomizedPreprocessor):
         """
         super().__init__(**get_params())
         self.all_preprocessors = preprocessors
-        self.k = k
+        self.k = min(k, len(preprocessors))
 
     def forward(
         self,

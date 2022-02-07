@@ -9,7 +9,7 @@ from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from torchvision.datasets import CIFAR10
 
 from src.art.classifier import PyTorchClassifier
-from src.defenses import EOT, DEFENSES
+from src.defenses import EOT, DEFENSES, Ensemble
 from src.models import CIFAR10ResNet
 
 
@@ -26,7 +26,8 @@ def parse_args():
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('-a', '--adaptive', action='store_true')
     # defense
-    parser.add_argument('-d', '--defense', type=str, choices=DEFENSES, required=True)
+    parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+', required=True)
+    parser.add_argument('-k', type=int, default=2)
     parser.add_argument('-r', '--randomized', action='store_true')
     parser.add_argument('--eot', type=int, default=1)
     args = parser.parse_args()
@@ -55,8 +56,11 @@ def main(args):
     y_test = y_test[::10]
 
     # Load defense
-    defense_cls = DEFENSES[args.defense]
-    defense = defense_cls(randomized=args.randomized)
+    defense = Ensemble(
+        randomized=args.randomized,
+        preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
+        k=args.k,
+    )
     if args.eot > 1:
         defense = EOT(defense, nb_samples=args.eot)
     print('using defense', defense)
