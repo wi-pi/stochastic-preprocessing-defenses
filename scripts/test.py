@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Optional, Any
+from typing import Any, Optional
 
 import numpy as np
 import torch.nn as nn
@@ -14,11 +14,17 @@ from src.art.classifier import PyTorchClassifier
 from src.defenses import DEFENSES, EOT, Ensemble
 from src.models import CIFAR10ResNet
 
+PRETRAINED_MODELS = {
+    'common': 'static/logs/common/checkpoints/epoch38-acc0.929.ckpt',
+    'augment3': 'static/logs/augment3/checkpoints/epoch19-acc0.768.ckpt',
+    'augment4': 'static/logs/augment4/checkpoints/epoch18-acc0.752.ckpt',
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
     # basic
-    parser.add_argument('--load', type=str, default='static/logs/version_0/checkpoints/epoch38-acc0.929.ckpt')
+    parser.add_argument('--load', type=str, choices=PRETRAINED_MODELS.keys(), default='augment3')
     parser.add_argument('--data-dir', type=str, default='static/datasets')
     parser.add_argument('-b', '--batch', type=int, default=1000)
     parser.add_argument('-g', '--gpu', type=int, default=0)
@@ -57,6 +63,7 @@ def robust_predict(model: PyTorchClassifier, x_test: np.ndarray, y_test: np.ndar
 def main(args):
     # Basic
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
+    args.load = PRETRAINED_MODELS[args.load]
     if args.norm == 'inf':
         args.eps /= 255
         args.lr /= 255
@@ -99,6 +106,8 @@ def main(args):
         args.batch = max(1, args.batch // args.eot)
         defense = EOT(defense, nb_samples=args.eot)
         logger.debug(f'Using EOT with {args.eot} samples.')
+    else:
+        logger.debug(f'No EOT used.')
 
     # Load model
     model = CIFAR10ResNet.load_from_checkpoint(args.load)

@@ -1,9 +1,25 @@
+from typing import List
+
 import pytorch_lightning as pl
 import torch
-
 import torchvision.transforms as T
-from torch.utils.data import random_split, Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import CIFAR10
+
+
+def get_defense(defenses):
+    from src.defenses import Ensemble, DEFENSES
+    ensemble = Ensemble(
+        randomized=True,
+        preprocessors=[DEFENSES[p].as_randomized() for p in defenses],
+        k=len(defenses),
+    )
+
+    def wrapper(x: torch.Tensor):
+        x, _ = ensemble.forward(x[None], None)
+        return x[0]
+
+    return wrapper
 
 
 class CIFAR10DataModule(pl.LightningDataModule):
@@ -11,7 +27,7 @@ class CIFAR10DataModule(pl.LightningDataModule):
     ds_val: Dataset
     ds_test: Dataset
 
-    def __init__(self, data_dir: str, batch_size: int, num_workers: int, seed: int):
+    def __init__(self, data_dir: str, batch_size: int, num_workers: int, defenses: List[str], seed: int):
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
@@ -23,6 +39,8 @@ class CIFAR10DataModule(pl.LightningDataModule):
             T.RandomHorizontalFlip(),
             T.ToTensor(),
         ])
+        if defenses:
+            self.train_transform.transforms.append(get_defense(defenses))
 
         self.test_transform = T.Compose([
             T.ToTensor(),
