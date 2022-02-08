@@ -252,12 +252,9 @@ class Gaussian(RandomizedPreprocessor):
         x = x[0]
         return x
 
-    def _estimate_forward_one(self, x: torch.Tensor, **params) -> torch.Tensor:
-        return self._forward_one(x, **params)
-
     def get_random_params(self) -> dict:
         params = {
-            'kernel_size': random.choice([(3, 3), (5, 5)]),
-            'sigma': [1, 1],  # np.random.random(2) + 1
+            'kernel_size': [random.choice([3, 5]) for _ in range(2)],
+            'sigma': np.random.random(2) + 1
         }
         return params

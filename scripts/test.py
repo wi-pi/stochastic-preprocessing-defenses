@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 import torch.nn as nn
@@ -8,6 +8,7 @@ from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from loguru import logger
 from torchvision.datasets import CIFAR10
+from tqdm import trange
 
 from src.art.classifier import PyTorchClassifier
 from src.defenses import DEFENSES, EOT, Ensemble
@@ -21,7 +22,9 @@ def parse_args():
     parser.add_argument('--data-dir', type=str, default='static/datasets')
     parser.add_argument('-b', '--batch', type=int, default=1000)
     parser.add_argument('-g', '--gpu', type=int, default=0)
+    parser.add_argument('-n', type=int, default=20)
     # attack
+    parser.add_argument('--norm', type=str, default='inf')
     parser.add_argument('--eps', type=float, default=8)
     parser.add_argument('--lr', type=float, default=2)
     parser.add_argument('--step', type=int, default=10)
@@ -43,11 +46,22 @@ def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None)
     return wrapper
 
 
+def robust_predict(model: PyTorchClassifier, x_test: np.ndarray, y_test: np.ndarray, args: Any):
+    correct = np.ones_like(y_test)
+    for _ in trange(args.n, desc='Predict'):
+        preds = model.predict(x_test, batch_size=args.batch).argmax(1)
+        correct &= preds == y_test
+    return correct
+
+
 def main(args):
     # Basic
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
-    # args.eps /= 255
-    # args.lr /= 255
+    if args.norm == 'inf':
+        args.eps /= 255
+        args.lr /= 255
+    else:
+        args.norm = int(args.norm)
 
     # Load test data
     dataset = CIFAR10(args.data_dir, train=False)
@@ -58,20 +72,27 @@ def main(args):
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
 
     # Load defense
+    """Single defense
+    """
+    # defense = DEFENSES['Gaussian'].as_randomized()
+    """Randomized ensemble of all
+    """
+    defense = Ensemble(
+        randomized=args.randomized,
+        preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
+        k=args.k,
+    )
+    """Manually specified ensemble 
+    """
     # defense = Ensemble(
-    #     randomized=args.randomized,
-    #     preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
-    #     k=args.k,
-    # )
-    # defense = Ensemble(
-    #     randomized=True,
+    #     randomized=False,
     #     preprocessors=[
-    #         DEFENSES['Gaussian'].as_fixed(kernel_size=(3, 3), sigma=(1, 1)),
     #         DEFENSES['Gaussian'].as_fixed(kernel_size=(5, 5), sigma=(1, 1)),
+    #         # DEFENSES['Median'].as_fixed(kernel_size=(5, 5)),
+    #         # DEFENSES['JpegCompression'].as_fixed(quality=60),
     #     ],
-    #     k=2,
+    #     k=3,
     # )
-    defense = DEFENSES['Gaussian'].as_randomized()
     logger.debug(f'Using defense {defense}.')
 
     if args.eot > 1:
@@ -85,33 +106,25 @@ def main(args):
     model_attack = get_wrapper(model, defense=defense if args.adaptive else None)
 
     # Test benign
-    preds_clean = model_predict.predict(x_test, batch_size=args.batch).argmax(1)
-    acc = np.mean(preds_clean == y_test)
+    preds_clean = robust_predict(model_predict, x_test, y_test, args)
+    acc = np.mean(preds_clean)
     logger.info(f'Accuracy: {acc:.4f}')
 
     # Only test valid samples
-    indices = np.nonzero(preds_clean == y_test)
+    indices = np.nonzero(preds_clean)
     x_test = x_test[indices]
     y_test = y_test[indices]
     logger.debug(f'Selecting {len(x_test)} correctly classified samples.')
 
     # Load attack
-    # logger.debug(f'Attack: norm {np.inf}, eps {args.eps:.3f}, eps_step {args.lr:.3f}, step {args.step}')
-    # attack = PGD(model_attack, norm=np.inf, eps=args.eps, eps_step=args.lr, max_iter=args.step, batch_size=args.batch)
-
-    logger.debug(f'Attack: norm {2}, eps {args.eps:.3f}, eps_step {args.lr:.3f}, step {args.step}')
-    attack = PGD(model_attack, norm=2, eps=args.eps, eps_step=args.lr, max_iter=args.step, batch_size=args.batch)
+    logger.debug(f'Attack: norm {args.norm}, eps {args.eps:.5f}, eps_step {args.lr:.5f}, step {args.step}')
+    attack = PGD(model_attack, args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, batch_size=args.batch)
 
     # Test adversarial
-    x_adv = attack.generate(x_test)
-    preds_adv = model_predict.predict(x_adv, batch_size=args.batch).argmax(1)
-    rob = np.mean(preds_adv == y_test)
+    x_adv = attack.generate(x_test, y_test)
+    preds_adv = robust_predict(model_predict, x_adv, y_test, args)
+    rob = np.mean(preds_adv)
     logger.info(f'Robustness: {rob:.4f}')
-
-    import torch
-    import torchvision.transforms.functional as F
-    for i in range(10):
-        F.to_pil_image(torch.from_numpy(x_adv[i])).save(f't{i}.png')
 
 
 if __name__ == '__main__':
