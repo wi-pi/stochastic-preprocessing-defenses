@@ -63,7 +63,6 @@ class JpegCompression(RandomizedPreprocessor):
 
 @DEFENSES
 class Swirl(RandomizedPreprocessor):
-    # FIXME: the adaptive attack on this defense is worse than only attacking the model.
     params = ['strength', 'radius', 'center']
 
     def __init__(self, randomized: bool, strength: float = None, radius: int = None, center: Tuple[int, int] = None):
