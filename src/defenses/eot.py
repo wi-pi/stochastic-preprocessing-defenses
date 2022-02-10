@@ -1,12 +1,11 @@
 from typing import Optional
 
 import torch
-from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 
 from src.defenses import RandomizedPreprocessor
 
 
-class EOT(PreprocessorPyTorch):
+class EOT(RandomizedPreprocessor):
     """
     EOT Wrapper for randomized preprocessor.
 
@@ -15,7 +14,7 @@ class EOT(PreprocessorPyTorch):
     """
 
     def __init__(self, preprocessor: RandomizedPreprocessor, nb_samples: int = 1):
-        super().__init__()
+        super().__init__(randomized=False)
         self.preprocessor = preprocessor
         self.nb_samples = nb_samples
         assert nb_samples >= 1
@@ -33,7 +32,13 @@ class EOT(PreprocessorPyTorch):
         return self.preprocessor.estimate_forward(x, y, stateful)
 
     def _repeat(self, x: torch.Tensor) -> torch.Tensor:
-        return x.repeat(self.nb_samples, 1, 1, 1)
+        return torch.repeat_interleave(x, repeats=self.nb_samples, dim=0)
 
     def __repr__(self):
         return f'{self.__class__.__name__}(preprocessor={self.preprocessor}, nb_samples={self.nb_samples})'
+
+    def _forward_one(self, x: torch.Tensor, **params) -> torch.Tensor:
+        raise NotImplementedError
+
+    def get_random_params(self) -> dict:
+        raise NotImplementedError

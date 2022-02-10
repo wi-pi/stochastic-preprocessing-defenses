@@ -27,8 +27,9 @@ class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
         y = y.clone().detach()
 
         # Forward pass: preprocessing + model
-        x_processed = self._apply_preprocessing_exact(x, stateful=True).requires_grad_(True)
-        y_processed = self.reduce_labels(y)
+        x_processed, y_processed = self._apply_preprocessing_exact(x, y, stateful=True)
+        x_processed.requires_grad_(True)
+        y_processed = self.reduce_labels(y_processed)
         model_outputs = self._model(x_processed)
 
         # Backward pass: model
@@ -44,20 +45,24 @@ class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
         x_processed.backward(grads)
         grads = x.grad
 
+        # Average the aggregated gradients from EOT
+        # Note: the gradient of repeated samples (due to EOT) will add to the leaf node x.
+        grads /= len(x_processed) / len(x)
+
         # Sanity check
         assert grads is not None
         assert grads.shape == x.shape
 
         return grads
 
-    def _apply_preprocessing_exact(self, x: torch.Tensor, stateful: bool = False) -> torch.Tensor:
+    def _apply_preprocessing_exact(self, x: torch.Tensor, y: torch.Tensor, stateful: bool = False):
         with torch.no_grad():
             for preprocess in self.preprocessing_operations:
                 kwargs = {'stateful': stateful} if isinstance(preprocess, RandomizedPreprocessor) else {}
-                x, _ = preprocess.forward(x, y=None, **kwargs)
-        return x
+                x, y = preprocess.forward(x, y, **kwargs)
+        return x, y
 
-    def _apply_preprocessing_estimate(self, x: torch.Tensor, stateful: bool = False) -> torch.Tensor:
+    def _apply_preprocessing_estimate(self, x: torch.Tensor, stateful: bool = False):
         for preprocess in self.preprocessing_operations:
             kwargs = {'stateful': stateful} if isinstance(preprocess, RandomizedPreprocessor) else {}
             x = preprocess.estimate_forward(x, **kwargs)
