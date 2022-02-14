@@ -60,10 +60,12 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
         :param stateful: Set True if this forward is stateful (w.r.t. subsequent BPDA pass).
         :return: Processed batch of inputs.
         """
-        x_processed = torch.zeros_like(x)
+        x_processed = [None] * x.shape[0]
         for i in range(x.shape[0]):
             params = self._get_params(save=stateful)
             x_processed[i] = self._forward_one(x[i], **params).clip(0, 1)
+
+        x_processed = torch.stack(x_processed).type_as(x)
 
         return x_processed, y
 
@@ -84,10 +86,12 @@ class RandomizedPreprocessor(PreprocessorPyTorch, abc.ABC):
         :param stateful: Set True if this forward is stateful (w.r.t. previous non-BPDA pass).
         :return: Processed batch of inputs.
         """
-        x_processed = torch.zeros_like(x)
+        x_processed = [None] * x.shape[0]
         for i in range(x.shape[0]):
             params = self._get_params(load=stateful)
             x_processed[i] = self._estimate_forward_one(x[i], **params).clip(0, 1)
+
+        x_processed = torch.stack(x_processed).type_as(x)
 
         return x_processed
 
