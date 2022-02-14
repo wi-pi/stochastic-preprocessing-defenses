@@ -11,3 +11,6 @@ from src.defenses.bart import (
 from src.defenses.base import RandomizedPreprocessor, DEFENSES
 from src.defenses.ensemble import Ensemble
 from src.defenses.eot import EOT
+from src.defenses.identical import (
+    ResizePad,
+)
