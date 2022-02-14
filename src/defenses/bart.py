@@ -13,7 +13,7 @@ from scipy import fftpack
 from skimage import filters, morphology, transform
 
 from src.defenses.base import DEFENSES, RandomizedPreprocessor
-from src.utils import get_params
+from src.utils.registry import get_params
 
 
 @DEFENSES

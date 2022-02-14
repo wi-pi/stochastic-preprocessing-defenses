@@ -6,20 +6,7 @@ import torchvision.transforms as T
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import CIFAR10
 
-
-def get_defense(defenses):
-    from src.defenses import Ensemble, DEFENSES
-    ensemble = Ensemble(
-        randomized=True,
-        preprocessors=[DEFENSES[p].as_randomized() for p in defenses],
-        k=len(defenses),
-    )
-
-    def wrapper(x: torch.Tensor):
-        x, _ = ensemble.forward(x[None], None)
-        return x[0]
-
-    return wrapper
+from src.datasets.utils import get_defense
 
 
 class CIFAR10DataModule(pl.LightningDataModule):

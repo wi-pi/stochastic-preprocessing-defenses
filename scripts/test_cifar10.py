@@ -1,7 +1,7 @@
 import argparse
 import os
 from functools import partial
-from typing import Optional, Callable
+from typing import Optional
 
 import numpy as np
 import torch.nn as nn
@@ -9,11 +9,11 @@ from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from loguru import logger
 from torchvision.datasets import CIFAR10
-from tqdm import trange
 
 from src.art.classifier import PyTorchClassifier
-from src.defenses import DEFENSES, EOT, RandomizedPreprocessor, Ensemble
-from src.models import CIFAR10ResNet
+from src.defenses import DEFENSES, Ensemble
+from src.models.cifar10 import CIFAR10ResNet
+from src.utils.testkit import BaseTestKit
 
 PRETRAINED_MODELS = {
     'common': 'static/logs/common/checkpoints/epoch38-acc0.929.ckpt',
@@ -22,14 +22,31 @@ PRETRAINED_MODELS = {
 }
 
 
+class TestKit(BaseTestKit):
+
+    @staticmethod
+    def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None):
+        wrapper = PyTorchClassifier(
+            model,
+            loss=nn.CrossEntropyLoss(),
+            input_shape=(3, 32, 32),
+            nb_classes=10,
+            clip_values=(0, 1),
+            preprocessing=None,
+            preprocessing_defences=defense,
+        )
+        return wrapper
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     # basic
     parser.add_argument('--load', type=str, choices=PRETRAINED_MODELS.keys(), default='augment3')
-    parser.add_argument('--data-dir', type=str, default='static/datasets')
     parser.add_argument('-b', '--batch', type=int, default=1000)
     parser.add_argument('-g', '--gpu', type=int, default=0)
     parser.add_argument('-n', type=int, default=10)
+    # dataset
+    parser.add_argument('--data-dir', type=str, default='static/datasets')
     parser.add_argument('--data-skip', type=int, default=10)
     # attack
     parser.add_argument('--norm', type=str, default='inf')
@@ -68,63 +85,7 @@ def load_defense(args):
     return defense
 
 
-class TestKit(object):
-
-    def __init__(
-        self,
-        model: nn.Module,
-        defense: RandomizedPreprocessor,
-        attack_fn: Callable,
-        batch_size: int,
-        repeat: int,
-    ):
-        self.model = model
-        self.defense = defense
-        self.model_defended = self.get_wrapper(model, defense=defense)
-        self.attack_fn = attack_fn
-        self.batch_size = batch_size
-        self.repeat = repeat
-
-    def predict(self, x_test: np.ndarray, y_test: np.ndarray):
-        # Initialize slots for prediction's correctness
-        correct = np.zeros_like(y_test)
-
-        # Repeat prediction and logic OR the results
-        # this means, the final prediction is correct as long as it corrects once.
-        for _ in trange(self.repeat, desc='Union Predict', leave=False):
-            preds = self.model_defended.predict(x_test, batch_size=self.batch_size).argmax(1)
-            correct |= preds == y_test
-
-        return correct, np.mean(correct) * 100
-
-    def attack(self, x_test: np.ndarray, y_test: np.ndarray, adaptive: bool, eot_samples: int = 1):
-        # Do we attack defended or undefended model?
-        defense = EOT(self.defense, nb_samples=eot_samples) if adaptive else None
-        target_model = self.get_wrapper(self.model, defense=defense)
-
-        # Adjust batch size according to EOT samples.
-        batch_size = max(1, self.batch_size // eot_samples)
-
-        # Final attack
-        attack = self.attack_fn(target_model, batch_size=batch_size)
-        x_adv = attack.generate(x_test, y_test)
-
-        return self.predict(x_adv, y_test)
-
-    @staticmethod
-    def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None):
-        wrapper = PyTorchClassifier(
-            model,
-            loss=nn.CrossEntropyLoss(),
-            input_shape=(3, 32, 32),
-            nb_classes=10,
-            clip_values=(0, 1),
-            preprocessing=None,
-            preprocessing_defences=defense,
-        )
-        return wrapper
-
-
+# noinspection DuplicatedCode
 def main(args):
     # Basic
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
@@ -135,10 +96,6 @@ def main(args):
     else:
         args.norm = int(args.norm)
 
-    # Load model
-    model = CIFAR10ResNet.load_from_checkpoint(args.load)
-    logger.debug(f'Loaded model from "{args.load}".')
-
     # Load data
     dataset = CIFAR10(args.data_dir, train=False)
     x_test = np.array(dataset.data / 255, dtype=np.float32).transpose((0, 3, 1, 2))  # to channel first
@@ -146,6 +103,10 @@ def main(args):
     x_test = x_test[::args.data_skip]
     y_test = y_test[::args.data_skip]
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
+
+    # Load model
+    model = CIFAR10ResNet.load_from_checkpoint(args.load)
+    logger.debug(f'Loaded model from "{args.load}".')
 
     # Load attack
     logger.debug(f'Attack: norm {args.norm}, eps {args.eps:.5f}, eps_step {args.lr:.5f}, step {args.step}')

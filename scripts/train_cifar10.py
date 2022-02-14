@@ -3,8 +3,8 @@ import argparse
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.datasets import CIFAR10DataModule
-from src.models import CIFAR10ResNet
+from src.datasets.cifar10 import CIFAR10DataModule
+from src.models.cifar10 import CIFAR10ResNet
 
 
 def parse_args():

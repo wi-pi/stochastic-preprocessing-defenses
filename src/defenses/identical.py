@@ -5,7 +5,7 @@ import torch
 import torchvision.transforms.functional as F
 
 from src.defenses.base import DEFENSES, RandomizedPreprocessor
-from src.utils import get_params
+from src.utils.registry import get_params
 
 
 @DEFENSES
