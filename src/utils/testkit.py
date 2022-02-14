@@ -26,19 +26,27 @@ class BaseTestKit(abc.ABC):
         self.batch_size = batch_size
         self.repeat = repeat
 
-    def predict(self, x_test: np.ndarray, y_test: np.ndarray):
+    def predict(self, x_test: np.ndarray, y_reference: np.ndarray, mode: str):
         # Initialize slots for prediction's correctness
-        correct = np.zeros_like(y_test)
+        correct = []
 
         # Repeat prediction and logic OR the results
         # this means, the final prediction is correct as long as it corrects once.
-        for _ in trange(self.repeat, desc='Union Predict', leave=False):
+        for _ in trange(self.repeat, desc=f'Predict ({mode})', leave=False):
             preds = self.model_defended.predict(x_test, batch_size=self.batch_size).argmax(1)
-            correct |= preds == y_test
+            correct.append(preds == y_reference)
+
+        # Summarize repeated predictions
+        if mode == 'all':
+            correct = np.all(correct, axis=0)
+        elif mode == 'any':
+            correct = np.any(correct, axis=0)
+        else:
+            raise NotImplementedError(mode)
 
         return correct, np.mean(correct) * 100
 
-    def attack(self, x_test: np.ndarray, y_test: np.ndarray, adaptive: bool, eot_samples: int = 1):
+    def attack(self, x_test: np.ndarray, y_reference: np.ndarray, adaptive: bool, mode: str, eot_samples: int = 1):
         # Do we attack defended or undefended model?
         defense = EOT(self.defense, nb_samples=eot_samples) if adaptive else None
         target_model = self.get_wrapper(self.model, defense=defense)
@@ -48,9 +56,9 @@ class BaseTestKit(abc.ABC):
 
         # Final attack
         attack = self.attack_fn(target_model, batch_size=batch_size)
-        x_adv = attack.generate(x_test, y_test)
+        x_adv = attack.generate(x_test, y_reference)
 
-        return self.predict(x_adv, y_test)
+        return self.predict(x_adv, y_reference, mode)
 
     @staticmethod
     @abc.abstractmethod

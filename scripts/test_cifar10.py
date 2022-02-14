@@ -53,6 +53,7 @@ def parse_args():
     parser.add_argument('--eps', type=float, default=8)
     parser.add_argument('--lr', type=float, default=2)
     parser.add_argument('--step', type=int, default=10)
+    parser.add_argument('-t', '--target', type=int, default=-1)
     # defense
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
     parser.add_argument('-k', type=int, default=2)
@@ -89,6 +90,7 @@ def load_defense(args):
 def main(args):
     # Basic
     os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
+    targeted = args.target >= 0
     args.load = PRETRAINED_MODELS[args.load]
     if args.norm == 'inf':
         args.eps /= 255
@@ -110,7 +112,7 @@ def main(args):
 
     # Load attack
     logger.debug(f'Attack: norm {args.norm}, eps {args.eps:.5f}, eps_step {args.lr:.5f}, step {args.step}')
-    attack_fn = partial(PGD, norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step)
+    attack_fn = partial(PGD, norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
 
     # Load defense
     defense = load_defense(args)
@@ -119,22 +121,46 @@ def main(args):
     # Load test
     testkit = TestKit(model, defense, attack_fn, args.batch, args.n)
 
-    # 1. Test benign
-    preds_clean, acc = testkit.predict(x_test, y_test)
-    logger.info(f'Accuracy: {acc:.2f}')
+    if not targeted:
+        logger.debug('Test with no targets.')
 
-    # 2. Select correctly classified samples
-    indices = np.nonzero(preds_clean)
-    x_test = x_test[indices]
-    y_test = y_test[indices]
+        # 1. Test benign
+        preds_clean, acc = testkit.predict(x_test, y_test, mode='any')
+        logger.info(f'Accuracy: {acc:.2f}')
 
-    # 3. Test adversarial (non-adaptive)
-    preds_adv, rob = testkit.attack(x_test, y_test, adaptive=False, eot_samples=1)
-    logger.info(f'Robustness (non-adaptive): {rob:.2f}')
+        # 2. Select correctly classified samples
+        indices = np.nonzero(preds_clean)
+        x_test = x_test[indices]
+        y_test = y_test[indices]
 
-    # 4. Test adversarial (adaptive)
-    preds_adv, rob = testkit.attack(x_test, y_test, adaptive=True, eot_samples=args.eot)
-    logger.info(f'Robustness (adaptive): {rob:.2f}')
+        # 3. Test adversarial (non-adaptive)
+        preds_adv, rob = testkit.attack(x_test, y_test, adaptive=False, mode='all', eot_samples=1)
+        logger.info(f'Robustness (non-adaptive): {rob:.2f}')
+
+        # 4. Test adversarial (adaptive)
+        preds_adv, rob = testkit.attack(x_test, y_test, adaptive=True, mode='all', eot_samples=args.eot)
+        logger.info(f'Robustness (adaptive): {rob:.2f}')
+
+    else:
+        logger.debug(f'Test with target {args.target}.')
+        y_target = np.zeros_like(y_test) + args.target
+
+        # 1. Test benign
+        preds_clean, asr = testkit.predict(x_test, y_target, mode='all')
+        logger.info(f'Attack Success Rate (benign): {asr:.2f}')
+
+        # 2. Select unsuccessful attack samples
+        indices = np.nonzero(preds_clean == 0)
+        x_test = x_test[indices]
+        y_target = y_target[indices]
+
+        # 3. Test adversarial (non-adaptive)
+        preds_adv, asr = testkit.attack(x_test, y_target, adaptive=False, mode='all', eot_samples=1)
+        logger.info(f'Attack Success Rate (non-adaptive): {asr:.2f}')
+
+        # 4. Test adversarial (adaptive)
+        preds_adv, asr = testkit.attack(x_test, y_target, adaptive=True, mode='all', eot_samples=args.eot)
+        logger.info(f'Attack Success Rate (adaptive): {asr:.2f}')
 
 
 if __name__ == '__main__':
