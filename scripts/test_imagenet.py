@@ -9,14 +9,21 @@ import torchvision.transforms as T
 from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from loguru import logger
+from torchvision import models
 from torchvision.datasets import ImageFolder
-from torchvision.models import resnet18
 from tqdm import trange
 
 from src.art.classifier import PyTorchClassifier
-from src.defenses import DEFENSES, Ensemble
+from src.defenses import DEFENSES
 from src.models.layers import NormalizationLayer
 from src.utils.testkit import BaseTestKit
+
+# https://pytorch.org/vision/stable/models.html
+PRETRAINED_MODELS = {
+    'r18': models.resnet18,  # 69.50
+    'r50': models.resnet50,  # 75.92
+    'inception': models.inception_v3,  # 77.18
+}
 
 
 class TestKit(BaseTestKit):
@@ -38,7 +45,7 @@ class TestKit(BaseTestKit):
 def parse_args():
     parser = argparse.ArgumentParser()
     # basic
-    parser.add_argument('--load', type=str)
+    parser.add_argument('--load', type=str, default='r18', choices=PRETRAINED_MODELS)
     parser.add_argument('-b', '--batch', type=int, default=250)
     parser.add_argument('-g', '--gpu', type=int, default=0)
     parser.add_argument('-n', type=int, default=10)
@@ -107,12 +114,13 @@ def main(args):
     # Load model
     model = nn.Sequential(
         NormalizationLayer.preset('imagenet'),
-        resnet18(pretrained=True),
+        PRETRAINED_MODELS[args.load](pretrained=True),
     )
-    logger.debug(f'Loaded model from "pretrained".')
+    logger.debug(f'Loaded model from "{args.load}".')
 
     # Load attack
-    logger.debug(f'Attack: norm {args.norm}, eps {args.eps:.5f}, eps_step {args.lr:.5f}, step {args.step} targeted {targeted}.')
+    logger.debug(
+        f'Attack: norm {args.norm}, eps {args.eps:.5f}, eps_step {args.lr:.5f}, step {args.step} targeted {targeted}.')
     attack_fn = partial(PGD, norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
 
     # Load defense
