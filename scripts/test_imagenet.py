@@ -61,14 +61,16 @@ def parse_args():
 
 def load_defense(args):
     """Single defense"""
-    # defense = DEFENSES['Gaussian'].as_randomized()
+    # defense = DEFENSES['ResizePad'].as_randomized(in_size=224, out_size=227)
+    # defense = DEFENSES['Crop'].as_randomized(in_size=224, crop_size=128)
+    defense = DEFENSES['DCT'].as_randomized()
 
     """Randomized ensemble of all"""
-    defense = Ensemble(
-        randomized=True,
-        preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
-        k=args.k,
-    )
+    # defense = Ensemble(
+    #     randomized=True,
+    #     preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
+    #     k=args.k,
+    # )
 
     """Manually specified ensemble"""
     # defense = Ensemble(
@@ -97,7 +99,7 @@ def main(args):
     # Load data
     transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), lambda x: x.numpy().astype(np.float32)])
     dataset = ImageFolder(args.data_dir, transform=transform)
-    subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset')]
+    subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset', leave=False)]
     x_test = np.stack([x for x, y in subset])
     y_test = np.array([y for x, y in subset])
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
