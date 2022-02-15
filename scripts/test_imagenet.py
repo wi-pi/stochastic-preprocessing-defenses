@@ -55,7 +55,7 @@ def parse_args():
     # attack
     parser.add_argument('--norm', type=str, default='inf')
     parser.add_argument('--eps', type=float, default=8)
-    parser.add_argument('--lr', type=float, default=2)
+    parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('-t', '--target', type=int, default=-1)
     # defense

@@ -15,6 +15,19 @@ from src.utils.registry import get_params
 
 
 @DEFENSES
+class Empty(RandomizedPreprocessor):
+
+    def __init__(self, randomized: bool):
+        super().__init__(**get_params())
+
+    def _forward_one(self, x: torch.Tensor, **params) -> torch.Tensor:
+        return x
+
+    def get_random_params(self) -> dict:
+        return {}
+
+
+@DEFENSES
 class ResizePad(RandomizedPreprocessor):
     params = ['add', 'pad']
 
@@ -94,8 +107,14 @@ class DCT(RandomizedPreprocessor):
 
     # noinspection PyMethodOverriding
     def _forward_one(self, x: torch.Tensor) -> torch.Tensor:
-        # record meta data
+        # record original input
         x_ori = x
+
+        # pad to 8x
+        pad = -(x.shape[1] % -self.size)
+        p1 = pad // 2
+        p2 = pad - p1
+        x = F.pad(x, [p1, p1, p2, p2])
         c, h, w = x.shape
 
         # to blocks
@@ -114,6 +133,10 @@ class DCT(RandomizedPreprocessor):
         x = x.reshape(c, -1, self.size * self.size).permute(0, 2, 1)
         x = nnf.fold(x, output_size=(h, w), kernel_size=self.size, stride=self.size)
         x = x.squeeze().type_as(x_ori)
+
+        # crop
+        x = F.crop(x, p1, p1, x_ori.shape[1], x_ori.shape[2])
+
         return x
 
     def get_random_params(self) -> dict:
