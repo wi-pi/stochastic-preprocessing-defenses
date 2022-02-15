@@ -1,5 +1,4 @@
 import argparse
-import os
 from functools import partial
 from typing import Optional
 
@@ -13,6 +12,7 @@ from torchvision.datasets import CIFAR10
 from src.art.classifier import PyTorchClassifier
 from src.defenses import DEFENSES, Ensemble
 from src.models.cifar10 import CIFAR10ResNet
+from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
 
 PRETRAINED_MODELS = {
@@ -43,7 +43,7 @@ def parse_args():
     # basic
     parser.add_argument('--load', type=str, choices=PRETRAINED_MODELS.keys(), default='augment3')
     parser.add_argument('-b', '--batch', type=int, default=1000)
-    parser.add_argument('-g', '--gpu', type=int, default=0)
+    parser.add_argument('-g', '--gpu', type=int)
     parser.add_argument('-n', type=int, default=10)
     # dataset
     parser.add_argument('--data-dir', type=str, default='static/datasets')
@@ -89,7 +89,7 @@ def load_defense(args):
 # noinspection DuplicatedCode
 def main(args):
     # Basic
-    os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
+    setgpu(args.gpu, gb=10.0)
     targeted = args.target >= 0
     args.load = PRETRAINED_MODELS[args.load]
     if args.norm == 'inf':

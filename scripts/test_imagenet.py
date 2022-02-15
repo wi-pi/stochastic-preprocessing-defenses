@@ -1,5 +1,4 @@
 import argparse
-import os
 from functools import partial
 from typing import Optional
 
@@ -14,8 +13,9 @@ from torchvision.datasets import ImageFolder
 from tqdm import trange
 
 from src.art.classifier import PyTorchClassifier
-from src.defenses import DEFENSES
+from src.defenses import DEFENSES, Ensemble
 from src.models.layers import NormalizationLayer
+from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
 
 # https://pytorch.org/vision/stable/models.html
@@ -47,7 +47,7 @@ def parse_args():
     # basic
     parser.add_argument('--load', type=str, default='r18', choices=PRETRAINED_MODELS)
     parser.add_argument('-b', '--batch', type=int, default=250)
-    parser.add_argument('-g', '--gpu', type=int, default=0)
+    parser.add_argument('-g', '--gpu', type=int)
     parser.add_argument('-n', type=int, default=10)
     # dataset
     parser.add_argument('--data-dir', type=str, default='static/datasets/imagenet')
@@ -70,14 +70,14 @@ def load_defense(args):
     """Single defense"""
     # defense = DEFENSES['ResizePad'].as_randomized(in_size=224, out_size=227)
     # defense = DEFENSES['Crop'].as_randomized(in_size=224, crop_size=128)
-    defense = DEFENSES['DCT'].as_randomized()
+    # defense = DEFENSES['DCT'].as_randomized()
 
     """Randomized ensemble of all"""
-    # defense = Ensemble(
-    #     randomized=True,
-    #     preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
-    #     k=args.k,
-    # )
+    defense = Ensemble(
+        randomized=True,
+        preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
+        k=args.k,
+    )
 
     """Manually specified ensemble"""
     # defense = Ensemble(
@@ -95,7 +95,7 @@ def load_defense(args):
 # noinspection DuplicatedCode
 def main(args):
     # Basic
-    os.environ['CUDA_VISIBLE_DEVICES'] = f'{args.gpu}'
+    setgpu(args.gpu, gb=10.0)
     targeted = args.target >= 0
     if args.norm == 'inf':
         args.eps /= 255
