@@ -1,4 +1,5 @@
 import argparse
+import os.path
 from functools import partial
 from typing import Optional
 
@@ -104,11 +105,19 @@ def main(args):
         args.norm = int(args.norm)
 
     # Load data
-    transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), lambda x: x.numpy().astype(np.float32)])
-    dataset = ImageFolder(args.data_dir, transform=transform)
-    subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset', leave=False)]
-    x_test = np.stack([x for x, y in subset])
-    y_test = np.array([y for x, y in subset])
+    cache_file = f'./static/imagenet.{args.data_skip}.npz'
+    if not os.path.exists(cache_file):
+        transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), lambda x: x.numpy().astype(np.float32)])
+        dataset = ImageFolder(args.data_dir, transform=transform)
+        subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset', leave=False)]
+        x_test = np.stack([x for x, y in subset])
+        y_test = np.array([y for x, y in subset])
+        np.savez(cache_file, x_test=x_test, y_test=y_test)
+    else:
+        subset = np.load(cache_file)
+        x_test = subset['x_test']
+        y_test = subset['y_test']
+
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
 
     # Load model
