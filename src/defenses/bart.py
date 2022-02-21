@@ -3,7 +3,6 @@ import random
 from random import randint
 from typing import List, Tuple
 
-import kornia
 import numpy as np
 import skimage.util
 import torch
@@ -213,47 +212,4 @@ class MeanFilter(RandomizedPreprocessor):
             radius = np.random.randint(low=2, high=3, size=1).repeat(3)
 
         params = {'radius': radius}
-        return params
-
-
-@DEFENSES
-class Median(RandomizedPreprocessor):
-    params = ['kernel_size']
-
-    def __init__(self, randomized: bool, kernel_size: Tuple[int, int] = (3, 3)):
-        super().__init__(**get_params())
-
-    # noinspection PyMethodOverriding
-    def _forward_one(self, x: torch.Tensor, kernel_size: Tuple[int, int]) -> torch.Tensor:
-        x = x[None]
-        x = kornia.filters.median_blur(x, kernel_size=kernel_size)
-        x = x[0]
-        return x
-
-    def get_random_params(self) -> dict:
-        params = {
-            'kernel_size': [random.choice([3, 5]) for _ in range(2)]
-        }
-        return params
-
-
-@DEFENSES
-class Gaussian(RandomizedPreprocessor):
-    params = ['kernel_size']
-
-    def __init__(self, randomized: bool, kernel_size: Tuple[int, int] = (3, 3), sigma: Tuple[float, float] = (1, 1)):
-        super().__init__(**get_params())
-
-    # noinspection PyMethodOverriding
-    def _forward_one(self, x: torch.Tensor, kernel_size: Tuple[int, int], sigma: Tuple[float, float]) -> torch.Tensor:
-        x = x[None]
-        x = kornia.filters.gaussian_blur2d(x, kernel_size=kernel_size, sigma=sigma)
-        x = x[0]
-        return x
-
-    def get_random_params(self) -> dict:
-        params = {
-            'kernel_size': [random.choice([3, 5]) for _ in range(2)],
-            'sigma': np.random.random(2) + 1
-        }
         return params

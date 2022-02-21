@@ -4,6 +4,7 @@ This module implements defenses that DO NOT require fine-tuning the model.
 from random import randint
 from typing import Tuple
 
+import kornia
 import numpy as np
 import torch
 import torch.nn.functional as nnf
@@ -148,3 +149,46 @@ class DCT(RandomizedPreprocessor):
         q = np.ones((size, size), dtype=np.float32) * 30
         q[:4, :4] = 25
         return q
+
+
+@DEFENSES
+class Median(RandomizedPreprocessor):
+    params = ['kernel_size']
+
+    def __init__(self, randomized: bool, kernel_size: Tuple[int, int] = (3, 3)):
+        super().__init__(**get_params())
+
+    # noinspection PyMethodOverriding
+    def _forward_one(self, x: torch.Tensor, kernel_size: Tuple[int, int]) -> torch.Tensor:
+        x = x[None]
+        x = kornia.filters.median_blur(x, kernel_size=kernel_size)
+        x = x[0]
+        return x
+
+    def get_random_params(self) -> dict:
+        params = {
+            'kernel_size': np.random.randint(low=0, high=7, size=2) * 2 + 1,  # {1, 3, 5, ..., 13}
+        }
+        return params
+
+
+@DEFENSES
+class Gaussian(RandomizedPreprocessor):
+    params = ['kernel_size']
+
+    def __init__(self, randomized: bool, kernel_size: Tuple[int, int] = (3, 3), sigma: Tuple[float, float] = (1, 1)):
+        super().__init__(**get_params())
+
+    # noinspection PyMethodOverriding
+    def _forward_one(self, x: torch.Tensor, kernel_size: Tuple[int, int], sigma: Tuple[float, float]) -> torch.Tensor:
+        x = x[None]
+        x = kornia.filters.gaussian_blur2d(x, kernel_size=kernel_size, sigma=sigma)
+        x = x[0]
+        return x
+
+    def get_random_params(self) -> dict:
+        params = {
+            'kernel_size': np.random.randint(low=0, high=7, size=2) * 2 + 1,  # {1, 3, 5, ..., 13}
+            'sigma': 0.1 + np.random.random(size=2) * 3,  # [0.1, 3.1)
+        }
+        return params
