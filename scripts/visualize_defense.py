@@ -1,16 +1,16 @@
 import argparse
 import os
 
-import numpy as np
-import torch
+import torchvision.transforms as T
 import torchvision.transforms.functional as F
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import CIFAR10, ImageFolder
 
 from src.defenses import DEFENSES
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, choices=['cifar10', 'imagenet'], default='imagenet')
     parser.add_argument('--data-dir', type=str, default='static/datasets')
     parser.add_argument('--save', type=str, default='static/visualize')
     parser.add_argument('-i', '--id', type=int, default=0)
@@ -25,8 +25,13 @@ def main(args):
     os.makedirs(args.save, exist_ok=True)
 
     # Load test data
-    dataset = CIFAR10(args.data_dir, train=False)
-    x_test = np.array(dataset.data / 255, dtype=np.float32).transpose((0, 3, 1, 2))  # to channel first
+    if args.dataset == 'cifar10':
+        dataset = CIFAR10(args.data_dir, train=False, transform=T.ToTensor())
+    elif args.dataset == 'imagenet':
+        transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor()])
+        dataset = ImageFolder(os.path.join(args.data_dir, 'imagenet'), transform=transform)
+    else:
+        raise NotImplementedError(args.dataset)
 
     # Load defense
     defense_cls = DEFENSES[args.defense]
@@ -34,13 +39,12 @@ def main(args):
     print('using defense', defense)
 
     # Save raw data
-    x = x_test[args.id]
-    x_t = torch.from_numpy(x)
-    F.to_pil_image(x_t).save(os.path.join(args.save, f'{args.id}.png'))
+    x, _ = dataset[args.id]
+    F.to_pil_image(x).save(os.path.join(args.save, f'{args.id}.png'))
 
     # Save processed data
     for i in range(args.n):
-        x_processed, _ = defense.forward(x_t.clone()[None])
+        x_processed, _ = defense.forward(x.clone()[None])
         F.to_pil_image(x_processed[0]).save(os.path.join(args.save, f'{args.id}_{args.defense}_{i}.png'))
 
 
