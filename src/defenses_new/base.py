@@ -46,11 +46,11 @@ class InstancePreprocessorPyTorch(PreprocessorPyTorch):
         processed_x = torch.stack(list(map(self.forward_one, x)))
         return processed_x, y
 
-    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_one(self, x_t: torch.Tensor) -> torch.Tensor:
         """
         Process one non-batched input tensor.
 
-        :param x: Input tensor of shape (C, H, W)
+        :param x_t: Input tensor of shape (C, H, W)
         :return: Processed input.
         """
         raise NotImplementedError
