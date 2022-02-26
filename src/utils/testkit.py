@@ -4,9 +4,11 @@ from typing import Callable, Optional
 import numpy as np
 import torch.nn as nn
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
+from art.estimators.classification import PyTorchClassifier
 from tqdm import trange
 
 from src.defenses import EOT, RandomizedPreprocessor
+from src.utils.functools import averaged_method
 
 
 class BaseTestKit(abc.ABC):
@@ -60,7 +62,22 @@ class BaseTestKit(abc.ABC):
 
         return self.predict(x_adv, y_reference, mode)
 
+    def attack_new(self, x_test: np.ndarray, y_reference: np.ndarray, adaptive: bool, mode: str, eot_samples: int = 1):
+        # Do we attack defended or undefended model?
+        defense = self.defense if adaptive else None
+        target_model = self.get_wrapper(self.model, defense=defense)
+
+        # Wrap up EOT
+        target_model.loss_gradient = averaged_method(target_model.loss_gradient, n_calls=eot_samples)
+        target_model.class_gradient = averaged_method(target_model.class_gradient, n_calls=eot_samples)
+
+        # Final attack
+        attack = self.attack_fn(target_model, batch_size=self.batch_size)
+        x_adv = attack.generate(x_test, y_reference)
+
+        return self.predict(x_adv, y_reference, mode)
+
     @staticmethod
     @abc.abstractmethod
-    def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None):
+    def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None) -> PyTorchClassifier:
         raise NotImplementedError
