@@ -6,7 +6,7 @@ import torch
 from src.utils.typing import FLOAT_INTERVAL, INT_INTERVAL
 
 
-def rand(interval: Union[INT_INTERVAL, FLOAT_INTERVAL], size=None) -> np.ndarray:
+def rand(interval: Union[INT_INTERVAL, FLOAT_INTERVAL], size=None) -> Union[int, float, np.ndarray]:
     """
     Generate random number from a given interval.
 
