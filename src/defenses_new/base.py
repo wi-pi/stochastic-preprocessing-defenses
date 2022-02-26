@@ -1,7 +1,9 @@
+import functools
 from typing import Optional
 
 import torch
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
+from cachetools import cached
 from torch.autograd import Function
 from torch.autograd.function import FunctionCtx
 
@@ -13,7 +15,7 @@ class InstanceFunction(Function):
     """
 
     @staticmethod
-    def forward(ctx: FunctionCtx, x_t: torch.Tensor) -> torch.Tensor:
+    def forward(ctx: FunctionCtx, x: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     @staticmethod
@@ -46,11 +48,48 @@ class InstancePreprocessorPyTorch(PreprocessorPyTorch):
         processed_x = torch.stack(list(map(self.forward_one, x)))
         return processed_x, y
 
-    def forward_one(self, x_t: torch.Tensor) -> torch.Tensor:
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
         """
         Process one non-batched input tensor.
 
-        :param x_t: Input tensor of shape (C, H, W)
+        :param x: Input tensor of shape (C, H, W)
         :return: Processed input.
         """
         raise NotImplementedError
+
+
+@cached(cache={}, key=lambda x, _: id(x))
+def _make_bpda_function(forward_one, self):
+    """
+    Create autograd Function class with identity BPDA.
+
+    Identical `forward_one` methods share the same BPDA function (enforced by cache).
+
+    :param forward_one: Defined forward method.
+    :param self: Instance of InstancePreprocessorPyTorch.
+    :return: BPDA Function.
+    """
+
+    class InstanceFunctionBPDA(InstanceFunction):
+
+        @staticmethod
+        def forward(ctx, x: torch.Tensor) -> torch.Tensor:
+            return forward_one(self, x)
+
+        @staticmethod
+        def backward(ctx, grad_output: torch.Tensor) -> torch.Tensor:
+            return grad_output
+
+    return InstanceFunctionBPDA
+
+
+def bpda_identity(forward_one):
+    """Decorator to add BPDA (identity) to the `forward_one` method.
+    """
+
+    @functools.wraps(forward_one)
+    def wrapper(self: InstancePreprocessorPyTorch, x: torch.Tensor) -> torch.Tensor:
+        bpda = _make_bpda_function(forward_one, self)
+        return bpda.apply(x)
+
+    return wrapper

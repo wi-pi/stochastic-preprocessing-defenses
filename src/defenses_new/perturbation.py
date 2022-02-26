@@ -1,16 +1,13 @@
 import random
 from typing import Sequence
 
-import random
-from typing import Sequence
-
 import numpy as np
 import skimage
 import torch
 from scipy import fftpack
 
-from src.defenses_new.base import InstancePreprocessorPyTorch
-from src.defenses_new.utils import bpda_identity, rand
+from src.defenses_new.base import InstancePreprocessorPyTorch, bpda_identity
+from src.defenses_new.utils import rand
 from src.utils.typing import FLOAT_INTERVAL, INT_INTERVAL
 
 
@@ -22,10 +19,10 @@ class NoiseInjection(InstancePreprocessorPyTorch):
         self.mode = mode
 
     @bpda_identity
-    def forward_one(self, x_t: torch.Tensor) -> torch.Tensor:
-        x_np = x_t.detach().cpu().numpy()
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+        x_np = x.detach().cpu().numpy()
         x_np = skimage.util.random_noise(x_np, mode=random.choice(self.mode))
-        return torch.from_numpy(x_np).type_as(x_t)
+        return torch.from_numpy(x_np).type_as(x)
 
 
 class FFTPerturbation(InstancePreprocessorPyTorch):
@@ -36,9 +33,9 @@ class FFTPerturbation(InstancePreprocessorPyTorch):
         self.fraction = fraction
 
     @bpda_identity
-    def forward_one(self, x_t: torch.Tensor) -> torch.Tensor:
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
         mask, fraction = rand(self.mask, size=3), rand(self.fraction, size=3)
-        x_np = x_t.cpu().clone().numpy().transpose(1, 2, 0)
+        x_np = x.cpu().clone().numpy().transpose(1, 2, 0)
         r, c, _ = x_np.shape
         point_factor = (1.02 - 0.98) * np.random.random((r, c)) + 0.98
         for i in range(3):
@@ -58,4 +55,4 @@ class FFTPerturbation(InstancePreprocessorPyTorch):
             x_np_new = np.clip(x_np_new, 0, 1)
             x_np[..., i] = x_np_new
 
-        return torch.from_numpy(x_np.transpose(2, 0, 1)).type_as(x_t)
+        return torch.from_numpy(x_np.transpose(2, 0, 1)).type_as(x)
