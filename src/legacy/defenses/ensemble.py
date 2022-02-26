@@ -3,8 +3,8 @@ from typing import List, Optional, Tuple
 
 import torch
 
-from src.defenses.base import RandomizedPreprocessor
-from src.utils.registry import get_params
+from src.legacy.defenses.base import RandomizedPreprocessor
+from src.legacy.utils.registry import get_params
 
 
 class Ensemble(RandomizedPreprocessor):

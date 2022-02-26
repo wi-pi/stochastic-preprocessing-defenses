@@ -9,11 +9,12 @@ from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from loguru import logger
 from torchvision.datasets import CIFAR10
 
-from src.art.classifier import PyTorchClassifier
-from src.defenses import DEFENSES, Ensemble
+from src.legacy.art.classifier import PyTorchClassifier
+from src.legacy.defenses.base import DEFENSES
+from src.legacy.defenses.ensemble import Ensemble
+from src.legacy.utils.testkit import BaseTestKit
 from src.models.cifar10 import CIFAR10ResNet
 from src.utils.gpu import setgpu
-from src.utils.testkit import BaseTestKit
 
 PRETRAINED_MODELS = {
     'common': 'static/logs/common/checkpoints/epoch38-acc0.929.ckpt',

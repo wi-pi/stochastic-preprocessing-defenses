@@ -11,8 +11,8 @@ from PIL import Image
 from scipy import fftpack
 from skimage import filters, morphology, transform
 
-from src.defenses.base import DEFENSES, RandomizedPreprocessor
-from src.utils.registry import get_params
+from src.legacy.defenses.base import DEFENSES, RandomizedPreprocessor
+from src.legacy.utils.registry import get_params
 
 
 @DEFENSES

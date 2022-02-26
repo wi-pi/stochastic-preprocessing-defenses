@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import torch
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 
-from src.utils.registry import Registry
+from src.legacy.utils.registry import Registry
 
 
 class DEFENSES(object, metaclass=Registry):

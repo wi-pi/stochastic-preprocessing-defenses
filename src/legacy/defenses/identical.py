@@ -11,8 +11,8 @@ import torch.nn.functional as nnf
 import torchvision.transforms.functional as F
 from scipy.fft import dctn, idctn
 
-from src.defenses.base import DEFENSES, RandomizedPreprocessor
-from src.utils.registry import get_params
+from src.legacy.defenses.base import DEFENSES, RandomizedPreprocessor
+from src.legacy.utils.registry import get_params
 
 
 @DEFENSES

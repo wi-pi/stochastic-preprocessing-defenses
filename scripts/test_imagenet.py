@@ -13,11 +13,12 @@ from torchvision import models
 from torchvision.datasets import ImageFolder
 from tqdm import trange
 
-from src.art.classifier import PyTorchClassifier
-from src.defenses import DEFENSES, Ensemble
+from src.legacy.art.classifier import PyTorchClassifier
+from src.legacy.defenses.base import DEFENSES
+from src.legacy.defenses.ensemble import Ensemble
+from src.legacy.utils.testkit import BaseTestKit
 from src.models.layers import NormalizationLayer
 from src.utils.gpu import setgpu
-from src.utils.testkit import BaseTestKit
 
 # https://pytorch.org/vision/stable/models.html
 PRETRAINED_MODELS = {

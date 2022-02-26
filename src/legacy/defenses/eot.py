@@ -2,7 +2,7 @@ from typing import Optional
 
 import torch
 
-from src.defenses import RandomizedPreprocessor
+from src.legacy.defenses.base import RandomizedPreprocessor
 
 
 class EOT(RandomizedPreprocessor):
