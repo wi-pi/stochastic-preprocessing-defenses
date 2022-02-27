@@ -8,30 +8,31 @@ import torch.nn as nn
 import torchvision.transforms as T
 from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
+from art.estimators.classification import PyTorchClassifier
 from loguru import logger
 from torchvision import models
 from torchvision.datasets import ImageFolder
 from tqdm import trange
 
-from src.legacy.art.classifier import PyTorchClassifier
-from src.legacy.defenses.base import DEFENSES
-from src.legacy.defenses.ensemble import Ensemble
-from src.legacy.utils.testkit import BaseTestKit
+from src.defenses import *
 from src.models.layers import NormalizationLayer
 from src.utils.gpu import setgpu
+from src.utils.testkit import BaseTestKit
 
 # https://pytorch.org/vision/stable/models.html
 PRETRAINED_MODELS = {
-    'r18': models.resnet18,  # 69.50
-    'r50': models.resnet50,  # 75.92
-    'inception': models.inception_v3,  # 77.18
+    'r18': models.resnet18,  # acc = 69.50
+    'r50': models.resnet50,  # acc = 75.92
+    'inception': models.inception_v3,  # acc = 77.18
 }
+
+DEFENSES = {cls.__name__: cls for cls in InstancePreprocessorPyTorch.__subclasses__()}
 
 
 class TestKit(BaseTestKit):
 
     @staticmethod
-    def get_wrapper(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None):
+    def get_estimator(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None) -> PyTorchClassifier:
         wrapper = PyTorchClassifier(
             model,
             loss=nn.CrossEntropyLoss(),
@@ -62,7 +63,7 @@ def parse_args():
     parser.add_argument('-t', '--target', type=int, default=-1)
     # defense
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
-    parser.add_argument('-k', type=int, default=2)
+    parser.add_argument('-k', type=int)
     parser.add_argument('--eot', type=int, default=1)
     args = parser.parse_args()
     return args
@@ -70,27 +71,23 @@ def parse_args():
 
 def load_defense(args):
     """Single defense"""
-    # defense = DEFENSES['ResizePad'].as_randomized(in_size=224, out_size=227)
-    # defense = DEFENSES['Crop'].as_randomized(in_size=224, crop_size=128)
-    # defense = DEFENSES['DCT'].as_randomized()
+    # defense = ResizePad(in_size=224, out_size=256)
+    # defense = Crop(in_size=224, crop_size=128)
+    # defense = DCT()
+    # defense = Gaussian(kernel_size=(0, 6), sigma=(0.1, 1.1))
 
     """Randomized ensemble of all"""
-    defense = Ensemble(
-        randomized=True,
-        preprocessors=[DEFENSES[p].as_randomized() for p in args.defenses],
-        k=args.k,
-    )
+    # defense = Ensemble(preprocessors=[DEFENSES[p]() for p in args.defenses], k=args.k)
 
     """Manually specified ensemble"""
-    # defense = Ensemble(
-    #     randomized=False,
-    #     preprocessors=[
-    #         DEFENSES['Gaussian'].as_fixed(kernel_size=(5, 5), sigma=(1, 1)),
-    #         # DEFENSES['Median'].as_fixed(kernel_size=(5, 5)),
-    #         # DEFENSES['JpegCompression'].as_fixed(quality=60),
-    #     ],
-    #     k=3,
-    # )
+    defense = Ensemble(
+        preprocessors=[
+            Gaussian(kernel_size=(0, 6), sigma=(1.0, 2.0)),
+            Median(kernel_size=(0, 6)),
+            JPEG(quality=(55, 75)),
+        ],
+        k=3,
+    )
     return defense
 
 
@@ -140,46 +137,12 @@ def main(args):
     # Load test
     testkit = TestKit(model, defense, attack_fn, args.batch, args.n)
 
-    if not targeted:
-        logger.debug('Test with no targets.')
-
-        # 1. Test benign
-        preds_clean, acc = testkit.predict(x_test, y_test, mode='any')
-        logger.info(f'Accuracy: {acc:.2f}')
-
-        # 2. Select correctly classified samples
-        indices = np.nonzero(preds_clean == 1)
-        x_test = x_test[indices]
-        y_test = y_test[indices]
-
-        # 3. Test adversarial (non-adaptive)
-        preds_adv, rob = testkit.attack(x_test, y_test, adaptive=False, mode='all', eot_samples=1)
-        logger.info(f'Robustness (non-adaptive): {rob:.2f}')
-
-        # 4. Test adversarial (adaptive)
-        preds_adv, rob = testkit.attack(x_test, y_test, adaptive=True, mode='all', eot_samples=args.eot)
-        logger.info(f'Robustness (adaptive): {rob:.2f}')
-
-    else:
+    if targeted:
         logger.debug(f'Test with target {args.target}.')
         y_target = np.zeros_like(y_test) + args.target
-
-        # 1. Test benign
-        preds_clean, asr = testkit.predict(x_test, y_target, mode='all')
-        logger.info(f'Attack Success Rate (benign): {asr:.2f}')
-
-        # 2. Select unsuccessful attack samples
-        indices = np.nonzero(preds_clean == 0)
-        x_test = x_test[indices]
-        y_target = y_target[indices]
-
-        # 3. Test adversarial (non-adaptive)
-        preds_adv, asr = testkit.attack(x_test, y_target, adaptive=False, mode='all', eot_samples=1)
-        logger.info(f'Attack Success Rate (non-adaptive): {asr:.2f}')
-
-        # 4. Test adversarial (adaptive)
-        preds_adv, asr = testkit.attack(x_test, y_target, adaptive=True, mode='all', eot_samples=args.eot)
-        logger.info(f'Attack Success Rate (adaptive): {asr:.2f}')
+        testkit.test_targeted(x_test, y_target, test_non_adaptive=True, eot_samples=args.eot, mode='all')
+    else:
+        testkit.test_untargeted(x_test, y_test, test_non_adaptive=True, eot_samples=args.eot, mode='all')
 
 
 if __name__ == '__main__':

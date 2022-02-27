@@ -4,7 +4,7 @@ from typing import List, Optional
 import torch
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 
-from src.defenses_new import InstancePreprocessorPyTorch
+from src.defenses import InstancePreprocessorPyTorch
 
 
 class Ensemble(InstancePreprocessorPyTorch):
@@ -26,5 +26,5 @@ class Ensemble(InstancePreprocessorPyTorch):
 
     def forward(self, x: torch.Tensor, y: Optional[torch.Tensor] = None):
         for preprocess in sample(self.preprocessors, self.k):
-            x, y = preprocess(x, y)
+            x, y = preprocess.forward(x, y)
         return x, y

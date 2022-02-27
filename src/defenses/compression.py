@@ -7,8 +7,8 @@ import torchvision.transforms.functional as F
 from PIL import Image
 from scipy.fft import dctn, idctn
 
-from src.defenses_new.base import InstancePreprocessorPyTorch, bpda_identity
-from src.defenses_new.utils import rand, rand_t
+from src.defenses.base import InstancePreprocessorPyTorch, bpda_identity
+from src.defenses.utils import rand, rand_t
 from src.utils.typing import INT_INTERVAL
 
 

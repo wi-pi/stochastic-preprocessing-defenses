@@ -3,8 +3,8 @@ import skimage
 import torch
 import torchvision.transforms.functional as F
 
-from src.defenses_new.base import InstancePreprocessorPyTorch, bpda_identity
-from src.defenses_new.utils import rand
+from src.defenses.base import InstancePreprocessorPyTorch, bpda_identity
+from src.defenses.utils import rand
 from src.utils.typing import FLOAT_INTERVAL, INT_INTERVAL
 
 

@@ -159,7 +159,7 @@ class GaussianBlur(RandomizedPreprocessor):
         if np.random.randint(2):
             sigma = 0.1 + np.random.random(3) * 2
         else:
-            sigma = 0.1 + np.random.random(1).repeat(3) * 2
+            sigma = 0.1 + np.random.random(1).nb_repeats(3) * 2
 
         params = {'sigma': sigma}
         return params
