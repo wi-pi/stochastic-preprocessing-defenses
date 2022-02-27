@@ -13,6 +13,7 @@ from src.utils.typing import FLOAT_INTERVAL, INT_INTERVAL
 
 class NoiseInjection(InstancePreprocessorPyTorch):
     all_modes = ('gaussian', 'poisson', 'salt', 'pepper', 's&p', 'speckle')
+    params = ['mode']
 
     def __init__(self, mode: Sequence[str] = all_modes):
         super().__init__()
@@ -26,6 +27,7 @@ class NoiseInjection(InstancePreprocessorPyTorch):
 
 
 class FFTPerturbation(InstancePreprocessorPyTorch):
+    params = ['mask', 'fraction']
 
     def __init__(self, mask: INT_INTERVAL = (0, 2), fraction: FLOAT_INTERVAL = (0.00, 0.95)):
         super().__init__()

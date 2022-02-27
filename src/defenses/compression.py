@@ -13,6 +13,7 @@ from src.utils.typing import INT_INTERVAL
 
 
 class Quantization(InstancePreprocessorPyTorch):
+    params = ['scale']
 
     def __init__(self, scale: INT_INTERVAL = (8, 200)):
         super().__init__()
@@ -26,6 +27,7 @@ class Quantization(InstancePreprocessorPyTorch):
 
 
 class JPEG(InstancePreprocessorPyTorch):
+    params = ['quality']
 
     def __init__(self, quality: INT_INTERVAL = (55, 75)):
         super().__init__()
@@ -41,6 +43,7 @@ class JPEG(InstancePreprocessorPyTorch):
 
 
 class DCT(InstancePreprocessorPyTorch):
+    params = 'blk_size'
 
     def __init__(self, blk_size: int = 8):
         super().__init__()

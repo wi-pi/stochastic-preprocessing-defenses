@@ -28,3 +28,9 @@ class Ensemble(InstancePreprocessorPyTorch):
         for preprocess in sample(self.preprocessors, self.k):
             x, y = preprocess.forward(x, y)
         return x, y
+
+    def __repr__(self):
+        fmt_string = f'{self.__class__.__name__}[k={self.k}](\n'
+        fmt_string += ''.join(f'  {p},\n' for p in self.preprocessors)
+        fmt_string += ')'
+        return fmt_string

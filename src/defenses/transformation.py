@@ -9,6 +9,7 @@ from src.utils.typing import FLOAT_INTERVAL, INT_INTERVAL
 
 
 class Median(InstancePreprocessorPyTorch):
+    params = ['kernel_size']
 
     def __init__(self, kernel_size: INT_INTERVAL = (2, 14)):
         super().__init__()
@@ -22,6 +23,7 @@ class Median(InstancePreprocessorPyTorch):
 
 
 class Gaussian(InstancePreprocessorPyTorch):
+    params = ['kernel_size', 'sigma']
 
     def __init__(self, kernel_size: INT_INTERVAL = (0, 13), sigma: FLOAT_INTERVAL = (0.1, 3.1)):
         super().__init__()
@@ -37,6 +39,7 @@ class Gaussian(InstancePreprocessorPyTorch):
 
 
 class Swirl(InstancePreprocessorPyTorch):
+    params = ['strength', 'radius', 'center']
 
     def __init__(
         self,
@@ -59,6 +62,7 @@ class Swirl(InstancePreprocessorPyTorch):
 
 
 class ResizePad(InstancePreprocessorPyTorch):
+    params = ['in_size', 'out_size']
 
     def __init__(self, in_size: int = 224, out_size: int = 256):
         super().__init__()
@@ -86,7 +90,8 @@ class ResizePad(InstancePreprocessorPyTorch):
 
 
 class Crop(InstancePreprocessorPyTorch):
-
+    params = ['in_size', 'crop_size']
+   
     def __init__(self, in_size: int = 224, crop_size: int = 128):
         super().__init__()
         self.in_size = in_size

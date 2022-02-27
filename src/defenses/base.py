@@ -57,6 +57,10 @@ class InstancePreprocessorPyTorch(PreprocessorPyTorch):
         """
         raise NotImplementedError
 
+    def __repr__(self):
+        params = ', '.join(f'{k}={getattr(self, k)}' for k in self.params)
+        return f'{self.__class__.__name__}({params})'
+
 
 @cached(cache={}, key=lambda x, _: id(x))
 def _make_bpda_function(forward_one, self):
