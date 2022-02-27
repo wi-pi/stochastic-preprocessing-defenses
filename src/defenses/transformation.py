@@ -25,7 +25,7 @@ class Median(InstancePreprocessorPyTorch):
 class Gaussian(InstancePreprocessorPyTorch):
     params = ['kernel_size', 'sigma']
 
-    def __init__(self, kernel_size: INT_INTERVAL = (0, 13), sigma: FLOAT_INTERVAL = (0.1, 3.1)):
+    def __init__(self, kernel_size: INT_INTERVAL = (2, 14), sigma: FLOAT_INTERVAL = (0.1, 3.1)):
         super().__init__()
         self.kernel_size = kernel_size
         self.sigma = sigma

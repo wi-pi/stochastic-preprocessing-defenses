@@ -43,7 +43,7 @@ class JPEG(InstancePreprocessorPyTorch):
 
 
 class DCT(InstancePreprocessorPyTorch):
-    params = 'blk_size'
+    params = ['blk_size']
 
     def __init__(self, blk_size: int = 8):
         super().__init__()
