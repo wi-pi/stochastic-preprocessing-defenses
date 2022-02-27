@@ -14,7 +14,7 @@ from torchvision import models
 from torchvision.datasets import ImageFolder
 from tqdm import trange
 
-from src.defenses import *
+from configs import DEFENSES, load_defense
 from src.models.layers import NormalizationLayer
 from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
@@ -25,8 +25,6 @@ PRETRAINED_MODELS = {
     'r50': models.resnet50,  # acc = 75.92
     'inception': models.inception_v3,  # acc = 77.18
 }
-
-DEFENSES = {cls.__name__: cls for cls in InstancePreprocessorPyTorch.__subclasses__()}
 
 
 class TestKit(BaseTestKit):
@@ -69,28 +67,6 @@ def parse_args():
     return args
 
 
-def load_defense(args):
-    """Single defense"""
-    # defense = ResizePad(in_size=224, out_size=256)
-    # defense = Crop(in_size=224, crop_size=128)
-    # defense = DCT()
-    # defense = Gaussian(kernel_size=(0, 6), sigma=(0.1, 1.1))
-
-    """Randomized ensemble of all"""
-    # defense = Ensemble(preprocessors=[DEFENSES[p]() for p in args.defenses], k=args.k)
-
-    """Manually specified ensemble"""
-    defense = Ensemble(
-        preprocessors=[
-            Gaussian(kernel_size=(0, 6), sigma=(1.0, 2.0)),
-            Median(kernel_size=(0, 6)),
-            JPEG(quality=(55, 75)),
-        ],
-        k=3,
-    )
-    return defense
-
-
 # noinspection DuplicatedCode
 def main(args):
     # Basic
@@ -131,7 +107,7 @@ def main(args):
     attack_fn = partial(PGD, norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
 
     # Load defense
-    defense = load_defense(args)
+    defense = load_defense(args.defenses)
     logger.debug(f'Defense: {defense}.')
 
     # Load test

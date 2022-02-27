@@ -5,9 +5,7 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as F
 from torchvision.datasets import CIFAR10, ImageFolder
 
-from src.defenses import InstancePreprocessorPyTorch
-
-DEFENSES = {cls.__name__: cls for cls in InstancePreprocessorPyTorch.__subclasses__()}
+from configs import DEFENSES
 
 
 def parse_args():

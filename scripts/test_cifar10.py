@@ -10,7 +10,7 @@ from art.estimators.classification import PyTorchClassifier
 from loguru import logger
 from torchvision.datasets import CIFAR10
 
-from src.defenses import *
+from configs import DEFENSES, load_defense
 from src.models.cifar10 import CIFAR10ResNet
 from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
@@ -20,8 +20,6 @@ PRETRAINED_MODELS = {
     'augment3': 'static/logs/augment3/checkpoints/epoch19-acc0.768.ckpt',
     'augment4': 'static/logs/augment4/checkpoints/epoch18-acc0.752.ckpt',
 }
-
-DEFENSES = {cls.__name__: cls for cls in InstancePreprocessorPyTorch.__subclasses__()}
 
 
 class TestKit(BaseTestKit):
@@ -64,25 +62,6 @@ def parse_args():
     return args
 
 
-def load_defense(args):
-    """Single defense"""
-    # defense = Gaussian(kernel_size=(2, 6), sigma=(1.0, 2.0))
-
-    """Randomized ensemble of all"""
-    # defense = Ensemble(preprocessors=[DEFENSES[p]() for p in args.defenses], k=args.k)
-
-    """Manually specified ensemble"""
-    defense = Ensemble(
-        preprocessors=[
-            Gaussian(kernel_size=(0, 6), sigma=(1.0, 2.0)),
-            Median(kernel_size=(0, 6)),
-            JPEG(quality=(15, 55)),
-        ],
-        k=3,
-    )
-    return defense
-
-
 # noinspection DuplicatedCode
 def main(args):
     # Basic
@@ -113,7 +92,7 @@ def main(args):
     attack_fn = partial(PGD, norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
 
     # Load defense
-    defense = load_defense(args)
+    defense = load_defense(args.defenses, args.k)
     logger.debug(f'Defense: {defense}.')
 
     # Load test
