@@ -45,7 +45,7 @@ class Swirl(InstancePreprocessorPyTorch):
         self,
         strength: FLOAT_INTERVAL = (0.01, 2.00),
         radius: INT_INTERVAL = (10, 201),
-        center: INT_INTERVAL = (1, 32),
+        center: INT_INTERVAL = (1, 201),
     ):
         super().__init__()
         self.strength = strength
@@ -91,7 +91,7 @@ class ResizePad(InstancePreprocessorPyTorch):
 
 class Crop(InstancePreprocessorPyTorch):
     params = ['in_size', 'crop_size']
-   
+
     def __init__(self, in_size: int = 224, crop_size: int = 128):
         super().__init__()
         self.in_size = in_size
