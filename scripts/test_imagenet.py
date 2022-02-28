@@ -7,6 +7,7 @@ import numpy as np
 import torch.nn as nn
 import torchvision.transforms as T
 from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
+from art.attacks.evasion import AutoProjectedGradientDescent as APGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from art.estimators.classification import PyTorchClassifier
 from loguru import logger
@@ -54,6 +55,7 @@ def parse_args():
     parser.add_argument('--data-dir', type=str, default='static/datasets/imagenet')
     parser.add_argument('--data-skip', type=int, default=50)
     # attack
+    parser.add_argument('--auto', action='store_true')
     parser.add_argument('--norm', type=str, default='inf')
     parser.add_argument('--eps', type=float, default=8)
     parser.add_argument('--lr', type=float, default=1)
@@ -102,9 +104,15 @@ def main(args):
     logger.debug(f'Loaded model from "{args.load}".')
 
     # Load attack
-    logger.debug(
-        f'Attack: norm {args.norm}, eps {args.eps:.5f}, eps_step {args.lr:.5f}, step {args.step} targeted {targeted}.')
-    attack_fn = partial(PGD, norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
+    pgd_kwargs = dict(norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
+    msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter} targeted {targeted}.'
+    logger.debug(msg.format(**pgd_kwargs))
+    if args.auto:
+        logger.debug('Using Auto PGD.')
+        attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=5)
+    else:
+        logger.debug('Using Standard PGD.')
+        attack_fn = partial(PGD, **pgd_kwargs)
 
     # Load defense
     defense = load_defense(args.defenses)
