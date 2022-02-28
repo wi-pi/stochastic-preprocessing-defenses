@@ -5,7 +5,7 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as F
 from torchvision.datasets import CIFAR10, ImageFolder
 
-from src.defenses import DEFENSES
+from configs import DEFENSES
 
 
 def parse_args():
@@ -35,7 +35,7 @@ def main(args):
 
     # Load defense
     defense_cls = DEFENSES[args.defense]
-    defense = defense_cls.as_randomized()
+    defense = defense_cls()
     print('using defense', defense)
 
     # Save raw data
@@ -44,8 +44,8 @@ def main(args):
 
     # Save processed data
     for i in range(args.n):
-        x_processed, _ = defense.forward(x.clone()[None])
-        F.to_pil_image(x_processed[0]).save(os.path.join(args.save, f'{args.id}_{args.defense}_{i}.png'))
+        x_processed = defense.forward_one(x.clone())
+        F.to_pil_image(x_processed).save(os.path.join(args.save, f'{args.id}_{args.defense}_{i}.png'))
 
 
 if __name__ == '__main__':

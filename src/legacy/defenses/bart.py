@@ -11,8 +11,8 @@ from PIL import Image
 from scipy import fftpack
 from skimage import filters, morphology, transform
 
-from src.defenses.base import DEFENSES, RandomizedPreprocessor
-from src.utils.registry import get_params
+from src.legacy.defenses.base import DEFENSES, RandomizedPreprocessor
+from src.legacy.utils.registry import get_params
 
 
 @DEFENSES
@@ -159,7 +159,7 @@ class GaussianBlur(RandomizedPreprocessor):
         if np.random.randint(2):
             sigma = 0.1 + np.random.random(3) * 2
         else:
-            sigma = 0.1 + np.random.random(1).repeat(3) * 2
+            sigma = 0.1 + np.random.random(1).nb_repeats(3) * 2
 
         params = {'sigma': sigma}
         return params

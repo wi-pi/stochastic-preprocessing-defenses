@@ -1,92 +1,36 @@
 from random import sample
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import torch
+from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 
-from src.defenses.base import RandomizedPreprocessor
-from src.utils.registry import get_params
+from src.defenses import InstancePreprocessorPyTorch
 
 
-class Ensemble(RandomizedPreprocessor):
+class Ensemble(InstancePreprocessorPyTorch):
     """
-    Ensemble of preprocessing defenses.
+    A preprocessing defense that ensembles multiple preprocessors at random.
     """
-    params = ['preprocessors', 'k']
 
-    def __init__(self, randomized: bool, preprocessors: List[RandomizedPreprocessor], k: int = 0):
+    def __init__(self, preprocessors: List[PreprocessorPyTorch], k: Optional[int] = None):
         """
-        Initialize an ensemble of multiple preprocessors.
+        A preprocessing defense that ensembles multiple preprocessors at random.
 
-        :param randomized: Set True to enable randomized ensemble.
-        :param preprocessors: Candidate preprocessors for ensemble.
-        :param k: Number of preprocessors to sample, if randomized.
+        :param preprocessors: List of candidate preprocessing defenses.
+        :param k: Number of sampled preprocessors. Set to None to sample all preprocessors.
         """
-        super().__init__(**get_params())
-        self.all_preprocessors = preprocessors
-        self.k = min(k, len(preprocessors))
+        super().__init__()
+        self.preprocessors = preprocessors
+        self.k = k if k is not None else len(preprocessors)
+        assert 1 <= self.k <= len(preprocessors), f'Cannot sample {k} from {len(preprocessors)} preprocessors.'
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        y: Optional[torch.Tensor] = None,
-        stateful: bool = False
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """
-        Top-level interface for non-differentiable inference.
-
-        Here we simply call each preprocessor's forward.
-
-        :param x: Batch of inputs [batch, channel, height, width]
-        :param y: Batch of labels [batch, classes]
-        :param stateful: Set True if this forward is stateful (w.r.t. subsequent BPDA pass).
-        :return: Processed batch of inputs.
-        """
-        params = self._get_params(save=stateful)
-        for preprocess in params['preprocessors']:
-            x, _ = preprocess.forward(x, y=None, stateful=stateful)
-
+    def forward(self, x: torch.Tensor, y: Optional[torch.Tensor] = None):
+        for preprocess in sample(self.preprocessors, self.k):
+            x, y = preprocess.forward(x, y)
         return x, y
 
-    def estimate_forward(
-        self,
-        x: torch.Tensor,
-        y: Optional[torch.Tensor] = None,
-        stateful: bool = False
-    ) -> torch.Tensor:
-        """
-        Top-level interface for differentiable inference (i.e., BPDA).
-
-        Here we simply call each preprocessor's estimate_forward.
-
-        :param x: Batch of inputs [batch, channel, height, width]
-        :param y: Batch of labels [batch, classes]
-        :param stateful: Set True if this forward is stateful (w.r.t. subsequent BPDA pass).
-        :return: Processed batch of inputs.
-        """
-        params = self._get_params(load=stateful)
-        for preprocess in params['preprocessors']:
-            x = preprocess.estimate_forward(x, stateful=stateful)
-        return x
-
-    # we directly overwrite the forward method, no need for this one
-    def _forward_one(self, x: torch.Tensor, indices: List[int] = None) -> torch.Tensor:
-        raise NotImplementedError
-
-    # we directly overwrite the forward method, no need for this one
-    def _estimate_forward_one(self, x: torch.Tensor, indices: List[int] = None) -> torch.Tensor:
-        raise NotImplementedError
-
-    def get_random_params(self) -> dict:
-        params = {
-            'preprocessors': sample(self.all_preprocessors, self.k)
-        }
-        return params
-
     def __repr__(self):
-        fmt_string = f'{self.__class__.__name__}(\n'
-        fmt_string += f'    randomized={self.randomized and self.k},\n'
-        fmt_string += f'    preprocessors=[\n'
-        fmt_string += ''.join(f'        {p},\n' for p in self.all_preprocessors)
-        fmt_string += '    ]\n'
+        fmt_string = f'{self.__class__.__name__}[k={self.k}](\n'
+        fmt_string += ''.join(f'  {p},\n' for p in self.preprocessors)
         fmt_string += ')'
         return fmt_string

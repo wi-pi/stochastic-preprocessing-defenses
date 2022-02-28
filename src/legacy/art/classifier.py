@@ -4,7 +4,7 @@ import art
 import torch
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 
-from src.defenses import RandomizedPreprocessor
+from src.legacy.defenses.base import RandomizedPreprocessor
 
 
 class PyTorchClassifier(art.estimators.classification.PyTorchClassifier):
