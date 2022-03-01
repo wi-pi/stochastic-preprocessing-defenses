@@ -55,12 +55,14 @@ def parse_args():
     parser.add_argument('--data-dir', type=str, default='static/datasets/imagenet')
     parser.add_argument('--data-skip', type=int, default=50)
     # attack
-    parser.add_argument('--auto', action='store_true')
     parser.add_argument('--norm', type=str, default='inf')
     parser.add_argument('--eps', type=float, default=8)
     parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('-t', '--target', type=int, default=-1)
+    # auto pgd
+    parser.add_argument('--auto', action='store_true')
+    parser.add_argument('--random-init', type=int, default=1)
     # defense
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
     parser.add_argument('-k', type=int)
@@ -105,11 +107,11 @@ def main(args):
 
     # Load attack
     pgd_kwargs = dict(norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
-    msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter} targeted {targeted}.'
+    msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter}, targeted {targeted}.'
     logger.debug(msg.format(**pgd_kwargs))
     if args.auto:
         logger.debug('Using Auto PGD.')
-        attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=5)
+        attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=args.random_init)
     else:
         logger.debug('Using Standard PGD.')
         attack_fn = partial(PGD, **pgd_kwargs)
