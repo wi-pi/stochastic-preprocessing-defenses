@@ -84,8 +84,7 @@ class BaseTestKit(abc.ABC):
         estimator = self.get_estimator(self.model, defense=defense)
 
         # Wrap gradient methods with EOT
-        estimator.loss_gradient = averaged_method(estimator.loss_gradient, n_calls=eot_samples)
-        estimator.class_gradient = averaged_method(estimator.class_gradient, n_calls=eot_samples)
+        self.prepare_estimator_for_eot(estimator, eot_samples)
 
         # Final attack
         attack = self.attack_fn(estimator, batch_size=self.batch_size)
@@ -180,3 +179,17 @@ class BaseTestKit(abc.ABC):
         :return: Initialized ART estimator.
         """
         raise NotImplementedError
+
+    @staticmethod
+    def prepare_estimator_for_eot(estimator: PyTorchClassifier, eot_samples: int = 1):
+        """
+        Modify an estimator so that it is ready for EOT attack.
+
+        By default, the gradient methods are repeated and averaged.
+
+        :param estimator: PyTorch classifier to be attacked.
+        :param eot_samples: Number of EOT samples when computing the gradients.
+        :return: None
+        """
+        estimator.loss_gradient = averaged_method(estimator.loss_gradient, n_calls=eot_samples)
+        estimator.class_gradient = averaged_method(estimator.class_gradient, n_calls=eot_samples)
