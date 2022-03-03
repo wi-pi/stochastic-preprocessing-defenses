@@ -6,8 +6,7 @@ from typing import Optional
 import numpy as np
 import torch.nn as nn
 import torchvision.transforms as T
-from art.attacks.evasion import ProjectedGradientDescentPyTorch as PGD
-from art.attacks.evasion import AutoProjectedGradientDescent as APGD
+from art.attacks.evasion import AutoProjectedGradientDescent as APGD, ProjectedGradientDescentPyTorch as PGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from art.estimators.classification import PyTorchClassifier
 from loguru import logger
@@ -16,7 +15,10 @@ from torchvision.datasets import ImageFolder
 from tqdm import trange
 
 from configs import DEFENSES, load_defense
+from src.art_extensions.attacks import AggMoPGD
+from src.art_extensions.classifiers import loss_gradient_average_logits
 from src.models.layers import NormalizationLayer
+from src.models.loss import LinearLoss
 from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
 
@@ -44,6 +46,25 @@ class TestKit(BaseTestKit):
         return wrapper
 
 
+class TestKitForAggMo(BaseTestKit):
+    @staticmethod
+    def get_estimator(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None) -> PyTorchClassifier:
+        wrapper = PyTorchClassifier(
+            model,
+            loss=LinearLoss(),
+            input_shape=(3, 224, 224),
+            nb_classes=1000,
+            clip_values=(0, 1),
+            preprocessing=None,
+            preprocessing_defences=defense,
+        )
+        return wrapper
+
+    @staticmethod
+    def prepare_estimator_for_eot(estimator: PyTorchClassifier, eot_samples: int = 1):
+        estimator.loss_gradient = loss_gradient_average_logits(estimator, nb_samples=eot_samples)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     # basic
@@ -61,7 +82,7 @@ def parse_args():
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('-t', '--target', type=int, default=-1)
     # auto pgd
-    parser.add_argument('--auto', action='store_true')
+    parser.add_argument('-a', '--attack', type=str, default='pgd', choices=['pgd', 'auto', 'aggmo'])
     parser.add_argument('--random-init', type=int, default=1)
     # defense
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
@@ -109,26 +130,32 @@ def main(args):
     pgd_kwargs = dict(norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
     msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter}, targeted {targeted}.'
     logger.debug(msg.format(**pgd_kwargs))
-    if args.auto:
+    if args.attack == 'pgd':
+        logger.debug('Using PGD.')
+        attack_fn = partial(PGD, **pgd_kwargs)
+    elif args.attack == 'auto':
         logger.debug('Using Auto PGD.')
         attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=args.random_init)
+    elif args.attack == 'aggmo':
+        logger.debug('Using AggMo PGD.')
+        attack_fn = partial(AggMoPGD, **pgd_kwargs, b=6)
     else:
-        logger.debug('Using Standard PGD.')
-        attack_fn = partial(PGD, **pgd_kwargs)
+        raise NotImplementedError(args.attack)
 
     # Load defense
     defense = load_defense(args.defenses)
     logger.debug(f'Defense: {defense}.')
 
     # Load test
-    testkit = TestKit(model, defense, attack_fn, args.batch, args.n)
+    testkit_cls = TestKitForAggMo if args.attack == 'aggmo' else TestKit
+    testkit = testkit_cls(model, defense, attack_fn, args.batch, args.n)
 
     if targeted:
         logger.debug(f'Test with target {args.target}.')
         y_target = np.zeros_like(y_test) + args.target
-        testkit.test_targeted(x_test, y_target, test_non_adaptive=True, eot_samples=args.eot, mode='all')
+        testkit.test_targeted(x_test, y_target, test_non_adaptive=False, eot_samples=args.eot, mode='all')
     else:
-        testkit.test_untargeted(x_test, y_test, test_non_adaptive=True, eot_samples=args.eot, mode='all')
+        testkit.test_untargeted(x_test, y_test, test_non_adaptive=False, eot_samples=args.eot, mode='all')
 
 
 if __name__ == '__main__':
