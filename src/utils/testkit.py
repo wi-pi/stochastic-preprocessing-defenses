@@ -88,6 +88,8 @@ class BaseTestKit(abc.ABC):
 
         # Final attack
         attack = self.attack_fn(estimator, batch_size=self.batch_size)
+        if id(estimator) != id(attack.estimator):
+            logger.warning(f'The attack changed your estimator, make sure you prepared the correct instance for EoT.')
         x_adv = attack.generate(x_test, y_reference)
 
         return self.predict(x_adv, y_reference, mode)
