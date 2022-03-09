@@ -1,4 +1,5 @@
 import random
+from functools import partial
 from typing import Sequence
 
 import numpy as np
@@ -24,6 +25,64 @@ class NoiseInjection(InstancePreprocessorPyTorch):
         x_np = x.detach().cpu().numpy()
         x_np = skimage.util.random_noise(x_np, mode=random.choice(self.mode))
         return torch.from_numpy(x_np).type_as(x)
+
+
+class NoiseInjectionPyTorch(InstancePreprocessorPyTorch):
+    all_modes = ('gaussian', 'poisson', 'salt', 'pepper', 's&p', 'speckle')
+    params = ['mode']
+
+    def __init__(self, mode: Sequence[str] = all_modes):
+        super().__init__()
+        self.mode = mode
+
+    @bpda_identity
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+        mode = random.choice(self.mode)
+        return self.random_noise(x, mode)
+
+    def random_noise(self, x: torch.Tensor, mode: str):
+        """PyTorch version of skimage.util.random_noise. """
+        add_noise = {
+            'gaussian': self.gaussian,
+            'poisson': self.poisson,
+            'salt': partial(self.salt_and_pepper, salt_vs_pepper=1),
+            'pepper': partial(self.salt_and_pepper, salt_vs_pepper=0),
+            's&p': partial(self.salt_and_pepper, salt_vs_pepper=0.5),
+            'speckle': self.speckle,
+        }[mode]
+        return torch.clip(add_noise(x), min=0, max=1)
+
+    @staticmethod
+    def gaussian(x: torch.Tensor):
+        return x + torch.randn_like(x) * 0.1  # N(0, 1) * 0.1 = N(0, 0.1)
+
+    @staticmethod
+    def poisson(x: torch.Tensor):
+        vals = len(torch.unique(x))
+        vals = 2 ** np.ceil(np.log2(vals))
+        return torch.poisson(x * vals) / vals
+
+    @staticmethod
+    def salt_and_pepper(x: torch.Tensor, salt_vs_pepper: float):
+        def _bernoulli(p: float):
+            if p == 0:
+                return torch.zeros_like(x).bool()
+            if p == 1:
+                return torch.ones_like(x).bool()
+            return torch.bernoulli(x, p=p).bool()
+
+        flipped = _bernoulli(p=0.05)
+        salted = _bernoulli(p=salt_vs_pepper)
+        peppered = ~salted
+
+        out = x.clone()
+        out[flipped & salted] = 1.0
+        out[flipped & peppered] = 0
+        return out
+
+    @staticmethod
+    def speckle(x: torch.Tensor):
+        return x + x * torch.randn_like(x) * 0.1
 
 
 class FFTPerturbation(InstancePreprocessorPyTorch):
