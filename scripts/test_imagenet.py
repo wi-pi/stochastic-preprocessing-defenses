@@ -131,17 +131,18 @@ def main(args):
     pgd_kwargs = dict(norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
     msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter}, targeted {targeted}.'
     logger.debug(msg.format(**pgd_kwargs))
-    if args.attack == 'pgd':
-        logger.debug('Using PGD.')
-        attack_fn = partial(PGD, **pgd_kwargs)
-    elif args.attack == 'auto':
-        logger.debug('Using Auto PGD.')
-        attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=args.random_init)
-    elif args.attack == 'aggmo':
-        logger.debug('Using AggMo PGD.')
-        attack_fn = partial(AggMoPGD, **pgd_kwargs, b=6)
-    else:
-        raise NotImplementedError(args.attack)
+    match args.attack:
+        case 'pgd':
+            logger.debug('Using PGD.')
+            attack_fn = partial(PGD, **pgd_kwargs)
+        case 'auto':
+            logger.debug('Using Auto PGD.')
+            attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=args.random_init)
+        case 'aggmo':
+            logger.debug('Using AggMo PGD.')
+            attack_fn = partial(AggMoPGD, **pgd_kwargs, b=6)
+        case _:
+            raise NotImplementedError(args.attack)
 
     # Load defense
     defense = load_defense(args.defenses)

@@ -60,15 +60,16 @@ class BaseTestKit(abc.ABC):
         preds_all = np.stack(preds_all)
 
         # Summarize repeated predictions
-        if mode == 'all':
-            correct = np.all(preds_all == y_reference[None], axis=0)
-        elif mode == 'any':
-            correct = np.any(preds_all == y_reference[None], axis=0)
-        elif mode == 'vote':
-            preds_vote, _ = scipy.stats.mode(preds_all, axis=0)
-            correct = preds_vote[0] == y_reference
-        else:
-            raise NotImplementedError(mode)
+        match mode:
+            case 'all':
+                correct = np.all(preds_all == y_reference[None], axis=0)
+            case 'any':
+                correct = np.any(preds_all == y_reference[None], axis=0)
+            case 'vote':
+                preds_vote, _ = scipy.stats.mode(preds_all, axis=0)
+                correct = preds_vote[0] == y_reference
+            case _:
+                raise NotImplementedError(mode)
 
         return correct, np.mean(correct) * 100
 
