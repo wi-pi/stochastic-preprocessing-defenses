@@ -2,6 +2,7 @@ import abc
 from typing import Callable, Optional
 
 import numpy as np
+import scipy.stats
 import torch.nn as nn
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from art.estimators.classification import PyTorchClassifier
@@ -46,23 +47,26 @@ class BaseTestKit(abc.ABC):
 
         :param x_test: Test samples of shape (B, C, H, W).
         :param y_reference: Reference labels of shape (B,), could be ground truth labels or target labels.
-        :param mode: Aggregation mode, either "any" or "all".
+        :param mode: Aggregation mode, support "any", "all", or "vote".
         :return: Indicator and percentage of matching with the reference label.
         """
-        # Initialize slots for prediction's correctness
-        correct = []
+        # Initialize slots for repeated predictions
+        preds_all = []
 
-        # Repeat prediction and logic OR the results
-        # this means, the final prediction is correct as long as it corrects once.
+        # Repeat prediction for multiple times
         for _ in trange(self.nb_repeats, desc=f'Predict ({mode})', leave=False):
             preds = self.estimator.predict(x_test, batch_size=self.batch_size).argmax(1)
-            correct.append(preds == y_reference)
+            preds_all.append(preds)
+        preds_all = np.stack(preds_all)
 
         # Summarize repeated predictions
         if mode == 'all':
-            correct = np.all(correct, axis=0)
+            correct = np.all(preds_all == y_reference[None], axis=0)
         elif mode == 'any':
-            correct = np.any(correct, axis=0)
+            correct = np.any(preds_all == y_reference[None], axis=0)
+        elif mode == 'vote':
+            preds_vote, _ = scipy.stats.mode(preds_all, axis=0)
+            correct = preds_vote[0] == y_reference
         else:
             raise NotImplementedError(mode)
 
@@ -116,7 +120,7 @@ class BaseTestKit(abc.ABC):
 
         # 1. Test benign
         preds_clean, acc = self.predict(x_test, y_test, mode=mode)
-        logger.info(f'Accuracy: {acc:.2f}')
+        logger.info(f'Benign Accuracy: {acc:.2f}')
 
         # 2. Select correctly classified samples
         indices = np.nonzero(preds_clean)
@@ -126,11 +130,11 @@ class BaseTestKit(abc.ABC):
         # 3. Test adversarial (non-adaptive)
         if test_non_adaptive:
             preds_adv, rob = self.attack(x_test, y_test, adaptive=False, mode=mode)
-            logger.info(f'Robustness (non-adaptive): {rob:.2f}')
+            logger.info(f'Adversarial Accuracy (non-adaptive attack): {rob:.2f}')
 
         # 4. Test adversarial (adaptive)
         preds_adv, rob = self.attack(x_test, y_test, adaptive=True, mode=mode, eot_samples=eot_samples)
-        logger.info(f'Robustness (adaptive): {rob:.2f}')
+        logger.info(f'Adversarial Accuracy (adaptive): {rob:.2f}')
 
     def test_targeted(
         self,

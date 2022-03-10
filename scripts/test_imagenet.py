@@ -71,7 +71,8 @@ def parse_args():
     parser.add_argument('--load', type=str, default='r18', choices=PRETRAINED_MODELS)
     parser.add_argument('-b', '--batch', type=int, default=250)
     parser.add_argument('-g', '--gpu', type=int)
-    parser.add_argument('-n', type=int, default=10)
+    parser.add_argument('-m', '--mode', type=str, default='all', choices=['all', 'any', 'vote'])
+    parser.add_argument('-n', '--repeat', type=int, default=10)
     # dataset
     parser.add_argument('--data-dir', type=str, default='static/datasets/imagenet')
     parser.add_argument('--data-skip', type=int, default=50)
@@ -148,14 +149,14 @@ def main(args):
 
     # Load test
     testkit_cls = TestKitForAggMo if args.attack == 'aggmo' else TestKit
-    testkit = testkit_cls(model, defense, attack_fn, args.batch, args.n)
+    testkit = testkit_cls(model, defense, attack_fn, args.batch, args.repeat)
 
     if targeted:
         logger.debug(f'Test with target {args.target}.')
         y_target = np.zeros_like(y_test) + args.target
-        testkit.test_targeted(x_test, y_target, test_non_adaptive=False, eot_samples=args.eot, mode='all')
+        testkit.test_targeted(x_test, y_target, test_non_adaptive=True, eot_samples=args.eot, mode=args.mode)
     else:
-        testkit.test_untargeted(x_test, y_test, test_non_adaptive=False, eot_samples=args.eot, mode='all')
+        testkit.test_untargeted(x_test, y_test, test_non_adaptive=True, eot_samples=args.eot, mode=args.mode)
 
 
 if __name__ == '__main__':

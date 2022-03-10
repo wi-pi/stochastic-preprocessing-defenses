@@ -4,3 +4,6 @@ gpustat
 IPython
 kornia
 scikit-image
+pandas
+seaborn
+matplotlib
