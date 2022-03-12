@@ -1,6 +1,5 @@
 import os
 from operator import itemgetter
-from typing import Optional
 
 import gpustat
 import numpy as np
@@ -8,8 +7,7 @@ from loguru import logger
 
 
 def set(gpu: int):
-    current_gpu = os.environ.get('CUDA_VISIBLE_DEVICES')
-    if current_gpu:
+    if current_gpu := os.environ.get('CUDA_VISIBLE_DEVICES'):
         logger.warning(f'GPU already set to {current_gpu}.')
         return
 
@@ -18,7 +16,7 @@ def set(gpu: int):
     logger.debug(f'Setting GPU to {gpu}.')
 
 
-def setgpu(gpu: Optional[int] = None, gb: float = 1.0):
+def setgpu(gpu: int | None = None, gb: float = 1.0):
     if gpu is not None:
         return set(gpu)
 

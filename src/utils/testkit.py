@@ -1,5 +1,5 @@
 import abc
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 import scipy.stats
@@ -20,7 +20,7 @@ class BaseTestKit(abc.ABC):
     def __init__(
         self,
         model: nn.Module,
-        defense: Optional[PreprocessorPyTorch],
+        defense: PreprocessorPyTorch | None,
         attack_fn: Callable,
         batch_size: int,
         nb_repeats: int,
@@ -177,7 +177,7 @@ class BaseTestKit(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def get_estimator(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None) -> PyTorchClassifier:
+    def get_estimator(model: nn.Module, defense: PreprocessorPyTorch | None = None) -> PyTorchClassifier:
         """
         Produce the estimator with the given defense.
 

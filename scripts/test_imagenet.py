@@ -1,7 +1,6 @@
 import argparse
 import os.path
 from functools import partial
-from typing import Optional
 
 import numpy as np
 import torch.nn as nn
@@ -33,7 +32,7 @@ PRETRAINED_MODELS = {
 class TestKit(BaseTestKit):
 
     @staticmethod
-    def get_estimator(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None) -> PyTorchClassifier:
+    def get_estimator(model: nn.Module, defense: PreprocessorPyTorch | None = None) -> PyTorchClassifier:
         wrapper = PyTorchClassifier(
             model,
             loss=nn.CrossEntropyLoss(),
@@ -48,7 +47,7 @@ class TestKit(BaseTestKit):
 
 class TestKitForAggMo(BaseTestKit):
     @staticmethod
-    def get_estimator(model: nn.Module, defense: Optional[PreprocessorPyTorch] = None) -> PyTorchClassifier:
+    def get_estimator(model: nn.Module, defense: PreprocessorPyTorch | None = None) -> PyTorchClassifier:
         wrapper = PyTorchClassifier(
             model,
             loss=LinearLoss(),
@@ -110,13 +109,11 @@ def main(args):
         transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), lambda x: x.numpy().astype(np.float32)])
         dataset = ImageFolder(args.data_dir, transform=transform)
         subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset', leave=False)]
-        x_test = np.stack([x for x, y in subset])
-        y_test = np.array([y for x, y in subset])
+        x_test, y_test = map(np.stack, zip(*subset))
         np.savez(cache_file, x_test=x_test, y_test=y_test)
     else:
         subset = np.load(cache_file)
-        x_test = subset['x_test']
-        y_test = subset['y_test']
+        x_test, y_test = subset['x_test'], subset['y_test']
 
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
 
@@ -130,7 +127,7 @@ def main(args):
     # Load attack
     pgd_kwargs = dict(norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
     msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter}, targeted {targeted}.'
-    logger.debug(msg.format(**pgd_kwargs))
+    logger.debug(msg.format_map(pgd_kwargs))
     match args.attack:
         case 'pgd':
             logger.debug('Using PGD.')
