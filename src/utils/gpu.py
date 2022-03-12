@@ -8,6 +8,11 @@ from loguru import logger
 
 
 def set(gpu: int):
+    current_gpu = os.environ.get('CUDA_VISIBLE_DEVICES')
+    if current_gpu:
+        logger.warning(f'GPU already set to {current_gpu}.')
+        return
+
     os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
     logger.debug(f'Setting GPU to {gpu}.')
