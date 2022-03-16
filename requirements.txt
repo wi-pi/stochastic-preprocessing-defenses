@@ -7,3 +7,5 @@ scikit-image
 pandas
 seaborn
 matplotlib
+tqdm
+pyyaml
