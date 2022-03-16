@@ -1,0 +1,12 @@
+exp_name: noise_pgd_untargeted
+module: scripts.test_imagenet
+arguments: -d NoiseInjectionPyTorch -k 1 -n {repeat} --lr {lr} --step {step} --eot {eot} -m {mode}
+log_dir: static/experiments/
+log_file: lr{lr:.1f}_step{step:d}_eot{eot:d}_{mode}{repeat}.log
+
+hparams:
+  lr: [0.5, 1.0, 2.0]
+  step: [10, 20, 50, 100, 200, 500, 1000]
+  eot: [1, 5, 10, 20, 50, 100]
+  mode: [vote]
+  repeat: [20]
