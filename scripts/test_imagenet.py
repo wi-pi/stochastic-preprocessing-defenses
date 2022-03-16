@@ -88,6 +88,7 @@ def parse_args():
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
     parser.add_argument('-k', type=int)
     parser.add_argument('--eot', type=int, default=1)
+    parser.add_argument('-p', '--params', nargs='+', help='additional arguments passed to defenses')
     args = parser.parse_args()
     return args
 
@@ -142,7 +143,7 @@ def main(args):
             raise NotImplementedError(args.attack)
 
     # Load defense
-    defense = load_defense(args.defenses)
+    defense = load_defense(args.defenses, args.k, args.params)
     logger.debug(f'Defense: {defense}.')
 
     # Load test

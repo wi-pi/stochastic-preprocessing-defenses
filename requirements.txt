@@ -9,3 +9,4 @@ seaborn
 matplotlib
 tqdm
 pyyaml
+scipy==1.7.3
