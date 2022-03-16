@@ -81,17 +81,22 @@ def main(args):
             cmd_fmt = 'nohup python -u -m {module} {args} 2>&1 > {output}'
             for cmd in parser.iter_commands(cmd_fmt):
                 print(cmd)
-        case 'plot':
+        case 'plot' | 'view':
             cmd_fmt = "grep Rate {log_file} | awk '{{print $NF}}'"
             df = pd.DataFrame(list(parser.iter_results(cmd_fmt)))
+
+            if args.action == 'view':
+                from IPython import embed
+                embed(using=False)
+                exit()
+
             plot(df, metric='Attack Success Rate', tag=parser.config.exp_name, root='./static/plots')
-            # plot(df, metric='Adversarial Accuracy', tag=parser.config.exp_name, root='./static/plots')
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', type=str)
-    parser.add_argument('action', type=str, choices=['cmd', 'plot'])
+    parser.add_argument('action', type=str, choices=['cmd', 'plot', 'view'])
     args = parser.parse_args()
     return args
 
