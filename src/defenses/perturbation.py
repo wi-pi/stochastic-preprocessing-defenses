@@ -85,6 +85,19 @@ class NoiseInjectionPyTorch(InstancePreprocessorPyTorch):
         return x + x * torch.randn_like(x) * 0.1
 
 
+class GaussianNoisePyTorch(InstancePreprocessorPyTorch):
+    params = ['variance']
+
+    def __init__(self, variance: float = 1.0):
+        super().__init__()
+        self.variance = variance
+
+    @bpda_identity
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + torch.randn_like(x) * self.variance
+        return torch.clip(x, min=0, max=1)
+
+
 class FFTPerturbation(InstancePreprocessorPyTorch):
     params = ['mask', 'fraction']
 
