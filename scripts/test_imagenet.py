@@ -1,8 +1,9 @@
 import argparse
-import os.path
 from functools import partial
+from pathlib import Path
 
 import numpy as np
+import torch
 import torch.nn as nn
 import torchvision.transforms as T
 from art.attacks.evasion import AutoProjectedGradientDescent as APGD, ProjectedGradientDescentPyTorch as PGD
@@ -21,11 +22,31 @@ from src.models.loss import LinearLoss
 from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
 
-# https://pytorch.org/vision/stable/models.html
+
+def load_smoothing_model(pretrained: bool, sigma: float):
+    model = models.resnet50(pretrained=False)
+    weight_file = f'static/models/smoothing-models/imagenet/resnet50/noise_{sigma:.2f}/checkpoint.pth.tar'
+    state_dict = torch.load(weight_file, map_location='cpu')['state_dict']
+    state_dict = {k.removeprefix('1.module.'): v for k, v in state_dict.items()}
+    model.load_state_dict(state_dict)
+    return model
+
+
+# suggested batch size:
+# r18: 250
+# r50: 100
 PRETRAINED_MODELS = {
+    # https://pytorch.org/vision/stable/models.html
     'r18': models.resnet18,  # acc = 69.50
     'r50': models.resnet50,  # acc = 75.92
     'inception': models.inception_v3,  # acc = 77.18
+
+    # https://github.com/locuslab/smoothing/tree/master
+    # Smoothing models are trained with additive Gaussian noise *without* clip to (0, 1)
+    'r50-s000': partial(load_smoothing_model, sigma=0.00),  # acc = 75.90 (N=20, sigma=0.00, no clip)  75.94 (clip)
+    'r50-s025': partial(load_smoothing_model, sigma=0.25),  # acc = 70.00 (N=20, sigma=0.25, no clip)  70.00 (clip)
+    'r50-s050': partial(load_smoothing_model, sigma=0.50),  # acc = 63.21 (N=20, sigma=0.50, no clip)
+    'r50-s100': partial(load_smoothing_model, sigma=1.00),  # acc = 50.80 (N=20, sigma=1.00, no clip)
 }
 
 
@@ -73,7 +94,7 @@ def parse_args():
     parser.add_argument('-m', '--mode', type=str, default='all', choices=['all', 'any', 'vote'])
     parser.add_argument('-n', '--repeat', type=int, default=10)
     # dataset
-    parser.add_argument('--data-dir', type=str, default='static/datasets/imagenet')
+    parser.add_argument('--data-dir', type=Path, default='static/datasets/imagenet')
     parser.add_argument('--data-skip', type=int, default=50)
     # attack
     parser.add_argument('--norm', type=str, default='inf')
@@ -105,10 +126,10 @@ def main(args):
         args.norm = int(args.norm)
 
     # Load data
-    cache_file = f'./static/imagenet.{args.data_skip}.npz'
-    if not os.path.exists(cache_file):
+    cache_file = args.data_dir / f'imagenet.{args.data_skip}.npz'
+    if not cache_file.exists():
         transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), lambda x: x.numpy().astype(np.float32)])
-        dataset = ImageFolder(args.data_dir, transform=transform)
+        dataset = ImageFolder(args.data_dir / 'val', transform=transform)
         subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset', leave=False)]
         x_test, y_test = map(np.stack, zip(*subset))
         np.savez(cache_file, x_test=x_test, y_test=y_test)
@@ -153,9 +174,9 @@ def main(args):
     if targeted:
         logger.debug(f'Test with target {args.target}.')
         y_target = np.zeros_like(y_test) + args.target
-        testkit.test_targeted(x_test, y_target, test_non_adaptive=True, eot_samples=args.eot, mode=args.mode)
+        testkit.test_targeted(x_test, y_target, test_non_adaptive=False, eot_samples=args.eot, mode=args.mode)
     else:
-        testkit.test_untargeted(x_test, y_test, test_non_adaptive=True, eot_samples=args.eot, mode=args.mode)
+        testkit.test_untargeted(x_test, y_test, test_non_adaptive=False, eot_samples=args.eot, mode=args.mode)
 
 
 if __name__ == '__main__':
