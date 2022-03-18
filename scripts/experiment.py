@@ -68,14 +68,15 @@ class Experiment(object):
 
 def _heat_map(df: pd.DataFrame, title: str, save: Path, aggfunc: str):
     plt.figure(constrained_layout=True)
-    sns.set(font_scale=1.4)
+    sns.set(font_scale=1.2)
     df = df.pivot_table(values='adaptive', index='eot', columns='step', aggfunc=aggfunc)
-    ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', linecolor='k', cmap='Blues', annot_kws={'size': 14})
+    ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', linecolor='k', cmap='Blues', annot_kws={'size': 12},
+                     square=True, cbar=False)
     ax.invert_yaxis()
     plt.xlabel('PGD Steps')
     plt.ylabel('EOT Samples')
     plt.title(title)
-    plt.savefig(save)
+    plt.savefig(save, bbox_inches='tight')
 
 
 def plot(df: pd.DataFrame, metric: str, aggfunc: str, tag: str, root: Path):
@@ -86,6 +87,18 @@ def plot(df: pd.DataFrame, metric: str, aggfunc: str, tag: str, root: Path):
         _heat_map(df[df.lr == lr], title=title, save=save, aggfunc=aggfunc)
 
     _heat_map(df, f'{metric} (%) with LR = Best', root / f'{tag}_best.pdf', aggfunc=aggfunc)
+
+
+def plot_gaussian(df: pd.DataFrame, metric: str, aggfunc: str, tag: str, root: Path):
+    os.makedirs(root, exist_ok=True)
+    for var in [0.1, 0.2]:
+        for lr in [0.5, 1.0]:
+            title = f'{metric} (%) with VAR = {var:.1f} LR = {lr:.1f}'
+            save = root / f'{tag}_var{var:.1f}_lr{lr:.1f}.pdf'
+            _heat_map(df[(df.lr == lr) & (df['var'] == var)], title=title, save=save, aggfunc=aggfunc)
+
+        _heat_map(df[df['var'] == var], f'{metric} (%) with  VAR = {var:.1f} LR = Best',
+                  root / f'{tag}_var{var:.1f}_best.pdf', aggfunc=aggfunc)
 
 
 def main(args):
