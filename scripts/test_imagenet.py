@@ -43,10 +43,10 @@ PRETRAINED_MODELS = {
 
     # https://github.com/locuslab/smoothing/tree/master
     # Smoothing models are trained with additive Gaussian noise *without* clip to (0, 1)
-    'r50-s000': partial(load_smoothing_model, sigma=0.00),  # acc = 75.90 (N=20, sigma=0.00, no clip)  75.94 (clip)
-    'r50-s025': partial(load_smoothing_model, sigma=0.25),  # acc = 70.00 (N=20, sigma=0.25, no clip)  70.00 (clip)
-    'r50-s050': partial(load_smoothing_model, sigma=0.50),  # acc = 63.21 (N=20, sigma=0.50, no clip)
-    'r50-s100': partial(load_smoothing_model, sigma=1.00),  # acc = 50.80 (N=20, sigma=1.00, no clip)
+    'r50-s0.00': partial(load_smoothing_model, sigma=0.00),  # acc = 75.90 (N=20, sigma=0.00, no clip)  75.94 (clip)
+    'r50-s0.25': partial(load_smoothing_model, sigma=0.25),  # acc = 70.00 (N=20, sigma=0.25, no clip)  70.00 (clip)
+    'r50-s0.50': partial(load_smoothing_model, sigma=0.50),  # acc = 63.21 (N=20, sigma=0.50, no clip)
+    'r50-s1.00': partial(load_smoothing_model, sigma=1.00),  # acc = 50.80 (N=20, sigma=1.00, no clip)
 }
 
 
