@@ -65,40 +65,56 @@ class Experiment(object):
     def log_file(self, hp: dict) -> Path:
         return self.log_dir / self.config.log_file.format_map(hp)
 
-
-def _heat_map(df: pd.DataFrame, title: str, save: Path, aggfunc: str):
-    plt.figure(constrained_layout=True)
-    sns.set(font_scale=1.2)
-    df = df.pivot_table(values='adaptive', index='eot', columns='step', aggfunc=aggfunc)
-    ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', linecolor='k', cmap='Blues', annot_kws={'size': 12},
-                     square=True, cbar=False)
-    ax.invert_yaxis()
-    plt.xlabel('PGD Steps')
-    plt.ylabel('EOT Samples')
-    plt.title(title)
-    plt.savefig(save, bbox_inches='tight')
+    @property
+    def name(self):
+        return self.config.exp_name
 
 
-def plot(df: pd.DataFrame, metric: str, aggfunc: str, tag: str, root: Path):
-    os.makedirs(root, exist_ok=True)
-    for lr in [0.5, 1.0, 2.0, 4.0, 8.0]:
-        title = f'{metric} (%) with LR = {lr:.1f}'
-        save = root / f'{tag}_lr{lr:.1f}.pdf'
-        _heat_map(df[df.lr == lr], title=title, save=save, aggfunc=aggfunc)
+class Heatmap(object):
 
-    _heat_map(df, f'{metric} (%) with LR = Best', root / f'{tag}_best.pdf', aggfunc=aggfunc)
+    def __init__(self, metric: str, agg: str, root: Path):
+        self.metric = metric
+        self.agg = agg
+        self.root = root
+        os.makedirs(root, exist_ok=True)
 
+    @classmethod
+    def auto(cls, metric: str, root: Path):
+        match metric:
+            case 'acc':
+                return cls('Adversarial Accuracy', 'min', root)
+            case 'asr':
+                return cls('Attack Success Rate', 'max', root)
+            case _:
+                raise NotImplementedError
 
-def plot_gaussian(df: pd.DataFrame, metric: str, aggfunc: str, tag: str, root: Path):
-    os.makedirs(root, exist_ok=True)
-    for var in [0.1, 0.2]:
-        for lr in [0.5, 1.0]:
-            title = f'{metric} (%) with VAR = {var:.1f} LR = {lr:.1f}'
-            save = root / f'{tag}_var{var:.1f}_lr{lr:.1f}.pdf'
-            _heat_map(df[(df.lr == lr) & (df['var'] == var)], title=title, save=save, aggfunc=aggfunc)
+    def plot_by_lr(self, df: pd.DataFrame, tag: str, lr_list: list[float]):
+        for lr in lr_list:
+            self.heatmap(df[df['lr'] == lr], f'{self.metric} (%) with LR = {lr:.1f}', f'{tag}_lr{lr:.1f}.pdf')
 
-        _heat_map(df[df['var'] == var], f'{metric} (%) with  VAR = {var:.1f} LR = Best',
-                  root / f'{tag}_var{var:.1f}_best.pdf', aggfunc=aggfunc)
+        self.heatmap(df, f'{self.metric} (%) with LR = Best', f'{tag}_best.pdf')
+
+    def plot_by_var_and_lr(self, df: pd.DataFrame, tag: str, var_list: list[float], lr_list: list[float]):
+        for var in var_list:
+            df_var = df[df['var'] == var]
+
+            for lr in lr_list:
+                title = f'{self.metric} (%) with VAR = {var:.1f} LR = {lr:.1f}'
+                self.heatmap(df_var[df['lr'] == lr], title, f'{tag}_var{var:.1f}_lr{lr:.1f}.pdf')
+
+            self.heatmap(df_var, f'{self.metric} (%) with VAR = {var:.1f} LR = Best', f'{tag}_var{var:.1f}_best.pdf')
+
+    def heatmap(self, df: pd.DataFrame, title: str, filename: str):
+        plt.figure(constrained_layout=True)
+        sns.set(font_scale=1.2)
+        df = df.pivot_table(values='adaptive', index='eot', columns='step', aggfunc=self.agg)
+        ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', cmap='Blues', annot_kws={'size': 12},
+                         square=True, cbar=False)
+        ax.invert_yaxis()
+        plt.xlabel('PGD Steps')
+        plt.ylabel('EOT Samples')
+        plt.title(title)
+        plt.savefig(self.root / filename, bbox_inches='tight')
 
 
 def main(args):
@@ -112,20 +128,22 @@ def main(args):
             for cmd in experiment.iter_commands(cmd_fmt):
                 print(cmd)
 
-        case 'plot' | 'view':
+        case 'view':
             df = pd.DataFrame(experiment.iter_results())
+            from IPython import embed
+            embed(using=False)
+            exit()
 
-            if args.action == 'view':
-                from IPython import embed
-                embed(using=False)
-                exit()
-
-            # different metrics require different tags & aggregate functions
-            match args.metric:
-                case 'acc':
-                    plot(df, 'Adversarial Accuracy', 'min', tag=experiment.config.exp_name, root=args.plot_dir)
-                case 'asr':
-                    plot(df, 'Attack Success Rate', 'max', tag=experiment.config.exp_name, root=args.plot_dir)
+        case 'plot':
+            heatmap = Heatmap.auto(args.metric, args.plot_dir)
+            df = pd.DataFrame(experiment.iter_results())
+            match args.by:
+                case 'lr':
+                    heatmap.plot_by_lr(df, tag=experiment.name, lr_list=[0.5, 1.0, 2.0, 4.0, 8.0])
+                case 'var':
+                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.1, 0.2], lr_list=[0.5, 1.0])
+                case _:
+                    raise NotImplementedError
 
 
 def parse_args():
@@ -135,7 +153,8 @@ def parse_args():
     parser.add_argument('-r', '--run', type=str, nargs='+')
     parser.add_argument('--plot-dir', type=Path, default='./static/plots')
     parser.add_argument('--log-dir', type=Path, default='./static/logs')
-    parser.add_argument('-m', '--metric', type=str, choices=['acc', 'asr'], default='acc')
+    parser.add_argument('-m', '--metric', type=str, choices=['acc', 'asr'])
+    parser.add_argument('--by', type=str, choices=['lr', 'var'])
     args = parser.parse_args()
     return args
 
