@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 from functools import partial
 from pathlib import Path
 
@@ -27,7 +28,7 @@ def load_smoothing_model(pretrained: bool, sigma: float):
     model = models.resnet50(pretrained=False)
     weight_file = f'static/models/smoothing-models/imagenet/resnet50/noise_{sigma:.2f}/checkpoint.pth.tar'
     state_dict = torch.load(weight_file, map_location='cpu')['state_dict']
-    state_dict = {k.removeprefix('1.module.'): v for k, v in state_dict.items()}
+    state_dict = OrderedDict({k.removeprefix('1.module.'): v for k, v in state_dict.items()})
     model.load_state_dict(state_dict)
     return model
 
@@ -102,6 +103,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('-t', '--target', type=int, default=-1)
+    parser.add_argument('--test-non-adaptive', action='store_true')
     # auto pgd
     parser.add_argument('-a', '--attack', type=str, default='pgd', choices=['pgd', 'auto', 'aggmo'])
     parser.add_argument('--random-init', type=int, default=1)
@@ -148,17 +150,14 @@ def main(args):
 
     # Load attack
     pgd_kwargs = dict(norm=args.norm, eps=args.eps, eps_step=args.lr, max_iter=args.step, targeted=targeted)
-    msg = 'Attack: norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter}, targeted {targeted}.'
-    logger.debug(msg.format_map(pgd_kwargs))
+    msg = 'Attack ({name}): norm {norm}, eps {eps:.5f}, eps_step {eps_step:.5f}, step {max_iter}, targeted {targeted}.'
+    logger.debug(msg.format_map(pgd_kwargs | {'name': args.attack}))
     match args.attack:
         case 'pgd':
-            logger.debug('Using PGD.')
             attack_fn = partial(PGD, **pgd_kwargs)
         case 'auto':
-            logger.debug('Using Auto PGD.')
             attack_fn = partial(APGD, **pgd_kwargs, nb_random_init=args.random_init)
         case 'aggmo':
-            logger.debug('Using AggMo PGD.')
             attack_fn = partial(AggMoPGD, **pgd_kwargs, b=6)
         case _:
             raise NotImplementedError(args.attack)
@@ -169,14 +168,11 @@ def main(args):
 
     # Load test
     testkit_cls = TestKitForAggMo if args.attack == 'aggmo' else TestKit
-    testkit = testkit_cls(model, defense, attack_fn, args.batch, args.repeat)
+    testkit = testkit_cls(model, defense, attack_fn, args.batch, args.mode, args.repeat)
 
-    if targeted:
-        logger.debug(f'Test with target {args.target}.')
-        y_target = np.zeros_like(y_test) + args.target
-        testkit.test_targeted(x_test, y_target, test_non_adaptive=False, eot_samples=args.eot, mode=args.mode)
-    else:
-        testkit.test_untargeted(x_test, y_test, test_non_adaptive=False, eot_samples=args.eot, mode=args.mode)
+    # Run test
+    y_reference = np.full_like(y_test, args.target) if targeted else y_test
+    testkit.test(x_test, y_reference, targeted=targeted, test_non_adaptive=args.test_non_adaptive, eot=args.eot)
 
 
 if __name__ == '__main__':
