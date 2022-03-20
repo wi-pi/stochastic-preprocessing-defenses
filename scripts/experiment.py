@@ -82,7 +82,7 @@ class Heatmap(object):
     def auto(cls, metric: str, root: Path):
         match metric:
             case 'acc':
-                return cls('Adversarial Accuracy', 'min', root)
+                return cls('Attack Success Rate', 'max', root)
             case 'asr':
                 return cls('Attack Success Rate', 'max', root)
             case _:
@@ -99,10 +99,10 @@ class Heatmap(object):
             df_var = df[df['var'] == var]
 
             for lr in lr_list:
-                title = f'{self.metric} (%) with VAR = {var:.1f} LR = {lr:.1f}'
-                self.heatmap(df_var[df['lr'] == lr], title, f'{tag}_var{var:.1f}_lr{lr:.1f}.pdf')
+                title = f'{self.metric} (%) with VAR = {var:.2f} LR = {lr:.1f}'
+                self.heatmap(df_var[df['lr'] == lr], title, f'{tag}_var{var:.2f}_lr{lr:.1f}.pdf')
 
-            self.heatmap(df_var, f'{self.metric} (%) with VAR = {var:.1f} LR = Best', f'{tag}_var{var:.1f}_best.pdf')
+            self.heatmap(df_var, f'{self.metric} (%) with VAR = {var:.2f} LR = Best', f'{tag}_var{var:.2f}_best.pdf')
 
     def heatmap(self, df: pd.DataFrame, title: str, filename: str):
         plt.figure(constrained_layout=True)
@@ -137,11 +137,16 @@ def main(args):
         case 'plot':
             heatmap = Heatmap.auto(args.metric, args.plot_dir)
             df = pd.DataFrame(experiment.iter_results())
+
+            # hotfix
+            if args.metric == 'acc':
+                df['adaptive'] = 100 - df['adaptive']
+
             match args.by:
                 case 'lr':
                     heatmap.plot_by_lr(df, tag=experiment.name, lr_list=[0.5, 1.0, 2.0, 4.0, 8.0])
                 case 'var':
-                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.1, 0.2], lr_list=[0.5, 1.0])
+                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.25, 0.50, 1.00], lr_list=[0.5, 1.0])
                 case _:
                     raise NotImplementedError
 
