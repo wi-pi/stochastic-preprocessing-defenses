@@ -1,10 +1,8 @@
 import argparse
-from collections import OrderedDict
 from functools import partial
 from pathlib import Path
 
 import numpy as np
-import torch
 import torch.nn as nn
 import torchvision.transforms as T
 from art.attacks.evasion import AutoProjectedGradientDescent as APGD, ProjectedGradientDescentPyTorch as PGD
@@ -20,18 +18,9 @@ from src.art_extensions.attacks import AggMoPGD
 from src.art_extensions.classifiers import loss_gradient_average_logits
 from src.models.layers import NormalizationLayer
 from src.models.loss import LinearLoss
+from src.models.smooth_models import smoothing_model
 from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
-
-
-def load_smoothing_model(pretrained: bool, sigma: float):
-    model = models.resnet50(pretrained=False)
-    weight_file = f'static/models/smoothing-models/imagenet/resnet50/noise_{sigma:.2f}/checkpoint.pth.tar'
-    state_dict = torch.load(weight_file, map_location='cpu')['state_dict']
-    state_dict = OrderedDict({k.removeprefix('1.module.'): v for k, v in state_dict.items()})
-    model.load_state_dict(state_dict)
-    return model
-
 
 # suggested batch size:
 # r18: 250
@@ -44,10 +33,10 @@ PRETRAINED_MODELS = {
 
     # https://github.com/locuslab/smoothing/tree/master
     # Smoothing models are trained with additive Gaussian noise *without* clip to (0, 1)
-    'r50-s0.00': partial(load_smoothing_model, sigma=0.00),  # acc = 75.90 (N=20, sigma=0.00, no clip)  75.94 (clip)
-    'r50-s0.25': partial(load_smoothing_model, sigma=0.25),  # acc = 70.00 (N=20, sigma=0.25, no clip)  70.00 (clip)
-    'r50-s0.50': partial(load_smoothing_model, sigma=0.50),  # acc = 63.21 (N=20, sigma=0.50, no clip)
-    'r50-s1.00': partial(load_smoothing_model, sigma=1.00),  # acc = 50.80 (N=20, sigma=1.00, no clip)
+    'r50-s0.00': partial(smoothing_model, sigma=0.00),  # acc = 75.90 (N=20, sigma=0.00, no clip)  75.94 (clip)
+    'r50-s0.25': partial(smoothing_model, sigma=0.25),  # acc = 70.00 (N=20, sigma=0.25, no clip)  70.00 (clip)
+    'r50-s0.50': partial(smoothing_model, sigma=0.50),  # acc = 63.21 (N=20, sigma=0.50, no clip)
+    'r50-s1.00': partial(smoothing_model, sigma=1.00),  # acc = 50.80 (N=20, sigma=1.00, no clip)
 }
 
 
@@ -102,6 +91,7 @@ def parse_args():
     parser.add_argument('--eps', type=float, default=8)
     parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--step', type=int, default=10)
+    parser.add_argument('--eot', type=int, default=1)
     parser.add_argument('-t', '--target', type=int, default=-1)
     parser.add_argument('--test-non-adaptive', action='store_true')
     # auto pgd
@@ -109,9 +99,8 @@ def parse_args():
     parser.add_argument('--random-init', type=int, default=1)
     # defense
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
-    parser.add_argument('-k', type=int)
-    parser.add_argument('--eot', type=int, default=1)
-    parser.add_argument('-p', '--params', nargs='+', help='additional arguments passed to defenses')
+    parser.add_argument('-k', '--nb-defenses', type=int)
+    parser.add_argument('-p', '--params', nargs='+', help='additional kwargs passed to defenses')
     args = parser.parse_args()
     return args
 
@@ -163,7 +152,7 @@ def main(args):
             raise NotImplementedError(args.attack)
 
     # Load defense
-    defense = load_defense(args.defenses, args.k, args.params)
+    defense = load_defense(defenses=args.defenses, nb_samples=args.nb_defenses, params=args.params)
     logger.debug(f'Defense: {defense}.')
 
     # Load test

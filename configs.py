@@ -3,21 +3,23 @@ from src.defenses import *
 DEFENSES = {cls.__name__: cls for cls in InstancePreprocessorPyTorch.__subclasses__()}
 
 
-def load_defense(defenses: list[str], k: int | None = None, params: list[str] | None = None):
+def _split_param(expr: str):
+    k, v = expr.split('=', maxsplit=1)
+    return k, eval(v)
+
+
+def load_defense(defenses: list[str], nb_samples: int | None = None, params: list[str] | None = None):
     """Automatically load a defense.
     """
-    # Eval params
-    params_dict = {}
-    for p in params or []:
-        k, v = p.split('=', maxsplit=1)
-        params_dict[k] = eval(v)
+    # Parse params
+    params_dict = dict(map(_split_param, params))
 
     """Single defense"""
     if len(defenses) == 1:
         return DEFENSES[defenses[0]](**params_dict)
 
     """Randomized ensemble of all"""
-    defense = Ensemble(preprocessors=[DEFENSES[p]() for p in defenses], k=k)
+    defense = Ensemble(preprocessors=[DEFENSES[p]() for p in defenses], nb_samples=nb_samples)
 
     """Manually specified ensemble"""
     # defense = Ensemble(
