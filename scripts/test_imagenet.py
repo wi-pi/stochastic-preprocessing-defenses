@@ -4,18 +4,16 @@ from pathlib import Path
 
 import numpy as np
 import torch.nn as nn
-import torchvision.transforms as T
 from art.attacks.evasion import AutoProjectedGradientDescent as APGD, ProjectedGradientDescentPyTorch as PGD
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from art.estimators.classification import PyTorchClassifier
 from loguru import logger
 from torchvision import models
-from torchvision.datasets import ImageFolder
-from tqdm import trange
 
 from configs import DEFENSES, load_defense
 from src.art_extensions.attacks import AggMoPGD
 from src.art_extensions.classifiers import loss_gradient_average_logits
+from src.datasets import imagenet
 from src.models.layers import NormalizationLayer
 from src.models.loss import LinearLoss
 from src.models.smooth_models import smoothing_model
@@ -98,7 +96,7 @@ def parse_args():
     parser.add_argument('-a', '--attack', type=str, default='pgd', choices=['pgd', 'auto', 'aggmo'])
     parser.add_argument('--random-init', type=int, default=1)
     # defense
-    parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+')
+    parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+', default=[])
     parser.add_argument('-k', '--nb-defenses', type=int)
     parser.add_argument('-p', '--params', nargs='+', help='additional kwargs passed to defenses')
     args = parser.parse_args()
@@ -110,23 +108,21 @@ def main(args):
     # Basic
     setgpu(args.gpu, gb=10.0)
     targeted = args.target >= 0
-    if args.norm == 'inf':
-        args.eps /= 255
-        args.lr /= 255
-    else:
-        args.norm = int(args.norm)
+    match args.norm:
+        case 'inf':
+            args.eps /= 255
+            args.lr /= 255
+        case _:
+            args.norm = int(args.norm)
 
     # Load data
     cache_file = args.data_dir / f'imagenet.{args.data_skip}.npz'
     if not cache_file.exists():
-        transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), lambda x: x.numpy().astype(np.float32)])
-        dataset = ImageFolder(args.data_dir / 'val', transform=transform)
-        subset = [dataset[i] for i in trange(0, len(dataset), args.data_skip, desc='Load dataset', leave=False)]
-        x_test, y_test = map(np.stack, zip(*subset))
-        np.savez(cache_file, x_test=x_test, y_test=y_test)
+        dataset = imagenet(root_dir=args.data_dir / 'val', transform='resnet', skip=args.data_skip)
+        x_test, y_test = map(np.stack, zip(*dataset))
+        np.savez(cache_file, x_test, y_test)
     else:
-        subset = np.load(cache_file)
-        x_test, y_test = subset['x_test'], subset['y_test']
+        x_test, y_test = np.load(cache_file).values()
 
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
 
@@ -156,7 +152,12 @@ def main(args):
     logger.debug(f'Defense: {defense}.')
 
     # Load test
-    testkit_cls = TestKitForAggMo if args.attack == 'aggmo' else TestKit
+    match args.attack:
+        case 'aggmo':
+            testkit_cls = TestKitForAggMo
+        case _:
+            testkit_cls = TestKit
+
     testkit = testkit_cls(model, defense, attack_fn, args.batch, args.mode, args.repeat)
 
     # Run test
