@@ -8,34 +8,14 @@ from art.attacks.evasion import AutoProjectedGradientDescent as APGD, ProjectedG
 from art.defences.preprocessor.preprocessor import PreprocessorPyTorch
 from art.estimators.classification import PyTorchClassifier
 from loguru import logger
-from torchvision import models
 
 from configs import DEFENSES, load_defense
 from src.art_extensions.attacks import AggMoPGD
 from src.art_extensions.classifiers import loss_gradient_average_logits
-from src.datasets import imagenet
-from src.models.layers import NormalizationLayer
-from src.models.loss import LinearLoss
-from src.models.smooth_models import smoothing_model
+from src.datasets import ImageNet
+from src.models import IMAGENET_MODELS, NormalizationLayer, LinearLoss
 from src.utils.gpu import setgpu
 from src.utils.testkit import BaseTestKit
-
-# suggested batch size:
-# r18: 250
-# r50: 100
-PRETRAINED_MODELS = {
-    # https://pytorch.org/vision/stable/models.html
-    'r18': models.resnet18,  # acc = 69.50
-    'r50': models.resnet50,  # acc = 75.92
-    'inception': models.inception_v3,  # acc = 77.18
-
-    # https://github.com/locuslab/smoothing/tree/master
-    # Smoothing models are trained with additive Gaussian noise *without* clip to (0, 1)
-    'r50-s0.00': partial(smoothing_model, sigma=0.00),  # acc = 75.90 (N=20, sigma=0.00, no clip)  75.94 (clip)
-    'r50-s0.25': partial(smoothing_model, sigma=0.25),  # acc = 70.00 (N=20, sigma=0.25, no clip)  70.00 (clip)
-    'r50-s0.50': partial(smoothing_model, sigma=0.50),  # acc = 63.21 (N=20, sigma=0.50, no clip)
-    'r50-s1.00': partial(smoothing_model, sigma=1.00),  # acc = 50.80 (N=20, sigma=1.00, no clip)
-}
 
 
 class TestKit(BaseTestKit):
@@ -76,7 +56,7 @@ class TestKitForAggMo(BaseTestKit):
 def parse_args():
     parser = argparse.ArgumentParser()
     # basic
-    parser.add_argument('--load', type=str, default='r18', choices=PRETRAINED_MODELS)
+    parser.add_argument('--load', type=str, default='r18', choices=IMAGENET_MODELS)
     parser.add_argument('-b', '--batch', type=int, default=250)
     parser.add_argument('-g', '--gpu', type=int)
     parser.add_argument('-m', '--mode', type=str, default='all', choices=['all', 'any', 'vote'])
@@ -118,18 +98,17 @@ def main(args):
     # Load data
     cache_file = args.data_dir / f'imagenet.{args.data_skip}.npz'
     if not cache_file.exists():
-        dataset = imagenet(root_dir=args.data_dir / 'val', transform='resnet', skip=args.data_skip)
+        dataset = ImageNet(root_dir=args.data_dir / 'val', transform='resnet', skip=args.data_skip)
         x_test, y_test = map(np.stack, zip(*dataset))
         np.savez(cache_file, x_test, y_test)
-    else:
-        x_test, y_test = np.load(cache_file).values()
 
+    x_test, y_test = np.load(cache_file).values()
     logger.debug(f'Loaded dataset x: {x_test.shape}, y: {y_test.shape}.')
 
     # Load model
     model = nn.Sequential(
         NormalizationLayer.preset('imagenet'),
-        PRETRAINED_MODELS[args.load](pretrained=True),
+        IMAGENET_MODELS[args.load](pretrained=True),
     )
     logger.debug(f'Loaded model from "{args.load}".')
 

@@ -14,7 +14,7 @@ default_transformations = {
 }
 
 
-def imagenet(root_dir: Path | str, transform: Callable | str | None, skip: int | None) -> Dataset:
+def ImageNet(root_dir: Path | str, transform: Callable | str | None, skip: int | None) -> Dataset:
     if isinstance(transform, str):
         transform = default_transformations[transform]
 
