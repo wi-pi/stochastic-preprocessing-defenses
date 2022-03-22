@@ -33,7 +33,7 @@ def load_defense(defenses: list[str], nb_samples: int | None = None, params: lis
 
         # Single defense with additional kwargs
         case 1:
-            kwargs = dict(map(_split, params))
+            kwargs = dict(map(_split, params or []))
             defense = DEFENSES[defenses[0]](**kwargs)
 
         # Randomized ensemble of all
