@@ -98,6 +98,19 @@ class GaussianNoisePyTorch(InstancePreprocessorPyTorch):
         return torch.clip(x, min=0, max=1)
 
 
+class GaussianNoisePyTorchNoClip(InstancePreprocessorPyTorch):
+    params = ['variance']
+
+    def __init__(self, variance: float = 1.0):
+        super().__init__()
+        self.variance = variance
+
+    @bpda_identity
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + torch.randn_like(x) * self.variance
+        return x
+
+
 class FFTPerturbation(InstancePreprocessorPyTorch):
     params = ['mask', 'fraction']
 
