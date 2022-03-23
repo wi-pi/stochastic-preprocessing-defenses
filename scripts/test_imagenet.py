@@ -53,6 +53,7 @@ class TestKitForAggMo(BaseTestKit):
         estimator.loss_gradient = loss_gradient_average_logits(estimator, nb_samples=eot_samples)
 
 
+# noinspection DuplicatedCode
 def parse_args():
     parser = argparse.ArgumentParser()
     # basic
