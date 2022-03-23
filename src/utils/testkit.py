@@ -17,12 +17,15 @@ class BaseTestKit(abc.ABC):
     Base class for the test kit.
     """
 
+    supported_modes = ['any', 'all', 'vote']
+
     def __init__(
         self,
         model: nn.Module,
         defense: PreprocessorPyTorch | None,
         attack_fn: Callable,
         batch_size: int,
+        mode: str,
         nb_repeats: int,
     ):
         """
@@ -32,6 +35,7 @@ class BaseTestKit(abc.ABC):
         :param defense: Optional preprocessing defense.
         :param attack_fn: Function that takes an ART estimator to initialize the attacker.
         :param batch_size: Test batch size.
+        :param mode: Aggregation mode, support "any", "all", or "vote".
         :param nb_repeats: Number of repeats for each prediction.
         """
         self.model = model
@@ -39,49 +43,59 @@ class BaseTestKit(abc.ABC):
         self.estimator = self.get_estimator(model, defense=defense)
         self.attack_fn = attack_fn
         self.batch_size = batch_size
+        self.mode = mode
         self.nb_repeats = nb_repeats
 
-    def predict(self, x_test: np.ndarray, y_reference: np.ndarray, mode: str):
+        if mode not in self.supported_modes:
+            raise NotImplementedError(f'Prediction mode not supported: {mode}.')
+
+    def predict(self, x_test: np.ndarray, y_test: np.ndarray, *, error_rate: bool = False) -> tuple[np.ndarray, float]:
         """
         Predict test samples with reference labels.
 
         :param x_test: Test samples of shape (B, C, H, W).
-        :param y_reference: Reference labels of shape (B,), could be ground truth labels or target labels.
-        :param mode: Aggregation mode, support "any", "all", or "vote".
-        :return: Indicator and percentage of matching with the reference label.
+        :param y_test: Reference labels of shape (B,), could be ground truth labels or target labels.
+        :param error_rate: Return "error rate" instead of "accuracy".
+        :return: Indicator and percentage of successful predictions.
         """
         # Initialize slots for repeated predictions
-        preds_all = []
+        y_pred_all = []
 
         # Repeat prediction for multiple times
-        for _ in trange(self.nb_repeats, desc=f'Predict ({mode})', leave=False):
-            preds = self.estimator.predict(x_test, batch_size=self.batch_size).argmax(1)
-            preds_all.append(preds)
-        preds_all = np.stack(preds_all)
+        for _ in trange(self.nb_repeats, desc=f'Predict ({self.mode})', leave=False):
+            y_pred = self.estimator.predict(x_test, batch_size=self.batch_size).argmax(1)
+            y_pred_all.append(y_pred)
+
+        y_pred_all = np.stack(y_pred_all)
 
         # Summarize repeated predictions
-        match mode:
+        match self.mode:
             case 'all':
-                correct = np.all(preds_all == y_reference[None], axis=0)
+                match = np.all(y_pred_all == y_test[None], axis=0)
+
             case 'any':
-                correct = np.any(preds_all == y_reference[None], axis=0)
+                match = np.any(y_pred_all == y_test[None], axis=0)
+
             case 'vote':
-                preds_vote, _ = scipy.stats.mode(preds_all, axis=0)
-                correct = preds_vote[0] == y_reference
+                preds_vote, _ = scipy.stats.mode(y_pred_all, axis=0)
+                match = preds_vote[0] == y_test
+
             case _:
-                raise NotImplementedError(mode)
+                raise RuntimeError(f'Prediction mode not supported: {self.mode}.')
 
-        return correct, np.mean(correct) * 100
+        # Define the notion of success
+        success = ~match if error_rate else match
+        return success, np.mean(success) * 100
 
-    def attack(self, x_test: np.ndarray, y_reference: np.ndarray, adaptive: bool, mode: str, eot_samples: int = 1):
+    def attack(self, x_test: np.ndarray, y_test: np.ndarray, *, targeted: bool, adaptive: bool, eot: int = 1):
         """
         Attack test samples with reference labels.
 
         :param x_test: Test samples of shape (B, C, H, W).
-        :param y_reference: Reference labels of shape (B,), could be ground truth labels or target labels.
+        :param y_test: Reference labels of shape (B,), could be ground truth labels or target labels.
+        :param targeted: If True, this is a targeted attack.
         :param adaptive: If True, attack the defense jointly.
-        :param mode: Aggregation mode, either "any" or "all".
-        :param eot_samples: Number of EOT samples when computing the gradients.
+        :param eot: Number of EOT samples when computing the gradients.
         :return: Indicator and percentage of matching with the reference label.
         """
         # Do we attack defended or undefended model?
@@ -89,91 +103,46 @@ class BaseTestKit(abc.ABC):
         estimator = self.get_estimator(self.model, defense=defense)
 
         # Wrap gradient methods with EOT
-        self.prepare_estimator_for_eot(estimator, eot_samples)
+        self.prepare_estimator_for_eot(estimator, eot)
 
         # Final attack
         attack = self.attack_fn(estimator, batch_size=self.batch_size)
         if id(estimator) != id(attack.estimator):
-            logger.warning(f'The attack changed your estimator, make sure you prepared the correct instance for EoT.')
-        x_adv = attack.generate(x_test, y_reference)
+            logger.warning(f'The attack changed your estimator, make sure you prepared the correct instance for EOT.')
+        x_adv = attack.generate(x_test, y_test)
 
-        return self.predict(x_adv, y_reference, mode)
+        return self.predict(x_adv, y_test, error_rate=not targeted)
 
-    def test_untargeted(
-        self,
-        x_test: np.ndarray,
-        y_test: np.ndarray,
-        test_non_adaptive: bool,
-        eot_samples: int,
-        mode: str = 'all',
-    ):
+    def test(self, x_test: np.ndarray, y_test: np.ndarray, *, targeted: bool, test_non_adaptive: bool, eot: int):
         """
-        Test untargeted attacks.
+        Test attacks.
 
         :param x_test: Test samples of shape (B, C, H, W).
         :param y_test: Ground truth labels of shape (B,).
+        :param targeted: If True, this is a targeted attack.
         :param test_non_adaptive: If True, test non-adaptive attacks.
-        :param eot_samples: Number of EOT samples when computing the gradients.
-        :param mode: Aggregation mode, the attack succeeds in "any" or "all" of the multiple predictions.
+        :param eot: Number of EOT samples when computing the gradients.
         :return: None
         """
-        logger.debug('Test with no targets.')
+        logger.debug(f'Test attack with {targeted = } and {eot = }.')
 
-        # 1. Test benign
-        preds_clean, acc = self.predict(x_test, y_test, mode=mode)
-        logger.info(f'Benign Accuracy: {acc:.2f}')
+        # Test benign
+        success, success_rate = self.predict(x_test, y_test, error_rate=not targeted)
+        logger.info(f'Attack Success Rate (benign): {success_rate:.2f}')
 
-        # 2. Select correctly classified samples
-        indices = np.nonzero(preds_clean)
+        # Select samples that we need to attack
+        indices = np.nonzero(~success)
         x_test = x_test[indices]
         y_test = y_test[indices]
 
-        # 3. Test adversarial (non-adaptive)
+        # Test adversarial (non-adaptive)
         if test_non_adaptive:
-            preds_adv, rob = self.attack(x_test, y_test, adaptive=False, mode=mode)
-            logger.info(f'Adversarial Accuracy (non-adaptive attack): {rob:.2f}')
+            success, success_rate = self.attack(x_test, y_test, targeted=targeted, adaptive=False, eot=1)
+            logger.info(f'Attack Success Rate (non-adaptive): {success_rate:.2f}')
 
-        # 4. Test adversarial (adaptive)
-        preds_adv, rob = self.attack(x_test, y_test, adaptive=True, mode=mode, eot_samples=eot_samples)
-        logger.info(f'Adversarial Accuracy (adaptive): {rob:.2f}')
-
-    def test_targeted(
-        self,
-        x_test: np.ndarray,
-        y_target: np.ndarray,
-        test_non_adaptive: bool,
-        eot_samples: int,
-        mode: str = 'all',
-    ):
-        """
-        Test targeted attacks.
-
-        :param x_test: Test samples of shape (B, C, H, W).
-        :param y_target: Target labels of shape (B,).
-        :param test_non_adaptive: If True, test non-adaptive attacks.
-        :param eot_samples: Number of EOT samples when computing the gradients.
-        :param mode: Aggregation mode, the attack succeeds in "any" or "all" of the multiple predictions.
-        :return: None
-        """
-        logger.debug(f'Test with target.')
-
-        # 1. Test benign
-        preds_clean, asr = self.predict(x_test, y_target, mode=mode)
-        logger.info(f'Attack Success Rate (benign): {asr:.2f}')
-
-        # 2. Select unsuccessful attack samples
-        indices = np.nonzero(preds_clean == 0)
-        x_test = x_test[indices]
-        y_target = y_target[indices]
-
-        # 3. Test adversarial (non-adaptive)
-        if test_non_adaptive:
-            preds_adv, asr = self.attack(x_test, y_target, adaptive=False, mode=mode)
-            logger.info(f'Attack Success Rate (non-adaptive): {asr:.2f}')
-
-        # 4. Test adversarial (adaptive)
-        preds_adv, asr = self.attack(x_test, y_target, adaptive=True, mode=mode, eot_samples=eot_samples)
-        logger.info(f'Attack Success Rate (adaptive): {asr:.2f}')
+        # Test adversarial (adaptive)
+        success, success_rate = self.attack(x_test, y_test, targeted=targeted, adaptive=True, eot=eot)
+        logger.info(f'Attack Success Rate (adaptive): {success_rate:.2f}')
 
     @staticmethod
     @abc.abstractmethod

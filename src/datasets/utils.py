@@ -1,17 +1,15 @@
+import numpy as np
+
 import torch
 
-from src.defenses import DEFENSES, Ensemble
 
+class ToNumpy(object):
 
-def get_defense(defenses):
-    ensemble = Ensemble(
-        randomized=True,
-        preprocessors=[DEFENSES[p].as_randomized() for p in defenses],
-        k=len(defenses),
-    )
+    def __init__(self, dtype=np.float32):
+        self.dtype = dtype
 
-    def wrapper(x: torch.Tensor):
-        x, _ = ensemble.forward(x[None], None)
-        return x[0]
+    def __call__(self, tensor: torch.Tensor) -> np.ndarray:
+        return tensor.numpy().astype(self.dtype)
 
-    return wrapper
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(dtype={self.dtype})'
