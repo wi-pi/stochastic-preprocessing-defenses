@@ -24,6 +24,7 @@ class BaseTestKit(abc.ABC):
         model: nn.Module,
         defense: PreprocessorPyTorch | None,
         attack_fn: Callable,
+        *,
         batch_size: int,
         mode: str,
         nb_repeats: int,

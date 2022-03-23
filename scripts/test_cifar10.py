@@ -95,7 +95,7 @@ def main(args):
     logger.debug(f'Defense: {defense}.')
 
     # Load test
-    testkit = TestKit(model, defense, attack_fn, args.batch, args.mode, args.repeat)
+    testkit = TestKit(model, defense, attack_fn, batch_size=args.batch, mode=args.mode, nb_repeats=args.repeat)
 
     # Run test
     y_reference = np.full_like(y_test, args.target) if targeted else y_test
