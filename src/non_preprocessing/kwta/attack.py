@@ -1,8 +1,11 @@
 import argparse
+import os
 from pathlib import Path
 
 import eagerpy as ep
 import foolbox as fb
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torchmetrics as tm
@@ -31,16 +34,22 @@ class Test(object):
 
         logger.info(f'Accuracy (benign): {metric.compute() * 100:.2f}')
 
-    def test_attack(self, data_loader: DataLoader, *, epsilon: float, lr: float, step: int, samples: int):
+    def test_attack(self, data_loader: DataLoader, *, eps: float, lr: float, step: int, eot: int):
         metric = tm.Accuracy(num_classes=10)
+        acc_all, cnt_all = [], 0
         with tqdm(data_loader, desc='Attack', leave=False) as pbar:
             for x_test, y_test in pbar:
-                x_adv = self.gradient_estimator_pgd(x_test, y_test, epsilon=epsilon, lr=lr, step=step, samples=samples)
-                preds = self.model(x_adv.cuda()).softmax(dim=-1).cpu()
+                x_adv, acc_list = self.gradient_estimator_pgd(x_test, y_test, eps=eps, lr=lr, step=step, eot=eot)
+                preds = self.model(x_adv).softmax(dim=-1).cpu()
                 acc = metric(preds, y_test).item()
                 pbar.set_postfix({'adv_acc': f'{acc * 100:.2f}'})
+                acc_all.append(acc_list)
+                cnt_all += len(x_test)
 
         logger.info(f'Accuracy (adversarial): {metric.compute() * 100:.2f}')
+
+        acc_all = np.array(acc_all).sum(0) / cnt_all
+        return acc_all
 
     def best_other_classes(self, logits: ep.Tensor, exclude: ep.Tensor) -> ep.Tensor:
         other_logits = logits - ep.onehot_like(logits, exclude, value=ep.inf)
@@ -81,7 +90,7 @@ class Test(object):
 
         return gradient
 
-    def gradient_estimator_pgd(self, x, y, *, epsilon: float, lr: float, step: int, samples: int) -> torch.Tensor:
+    def gradient_estimator_pgd(self, x, y, *, eps: float, lr: float, step: int, eot: int):
         """
         Run attack.
 
@@ -89,10 +98,10 @@ class Test(object):
 
         :param x: Test images.
         :param y: Test labels.
-        :param epsilon: Perturbation budget.
+        :param eps: Perturbation budget.
         :param lr: PGD step size.
         :param step: PGD iterations.
-        :param samples: EOT samples.
+        :param eot: EOT samples.
         :return:
         """
         ep_images = ep.astensor(x.cuda())
@@ -100,9 +109,11 @@ class Test(object):
         deltas = ep.zeros_like(ep_images)
         mask = self.loss_fn(ep_images, ep_labels) >= 0
 
+        acc_history = []
+
         for it in trange(step, desc='PGD', leave=False):
             pert_images = (ep_images + deltas).clip(0, 1)
-            grads = self.es_gradient_estimator(pert_images[mask], ep_labels[mask], samples, epsilon)
+            grads = self.es_gradient_estimator(pert_images[mask], ep_labels[mask], eot, eps)
 
             # update only subportion of deltas
             # _deltas = np.array(deltas.numpy())
@@ -110,16 +121,19 @@ class Test(object):
             # deltas = ep.from_numpy(deltas, _deltas)
             deltas.raw[mask.raw] = deltas.raw[mask.raw] - lr * grads.raw.sign()
 
-            deltas = deltas.clip(-epsilon, epsilon)
+            deltas = deltas.clip(-eps, eps)
             pert_images = (ep_images + deltas).clip(0, 1)
 
             new_logit_diffs = self.loss_fn(pert_images, ep_labels)
             mask = new_logit_diffs >= 0
 
-            if mask.sum() == 0:
-                break
+            if (it + 1) % 10 == 0:
+                acc_history.append(mask.sum().item())
 
-        return pert_images.raw
+            # if mask.sum() == 0:
+            #     break
+
+        return pert_images.raw, acc_history
 
 
 # noinspection DuplicatedCode
@@ -137,6 +151,7 @@ def parse_args():
     parser.add_argument('--model-dir', type=Path, default='static/models')
     parser.add_argument('--data-dir', type=Path, default='static/datasets')
     parser.add_argument('--data-skip', type=int, default=15)
+    parser.add_argument('--output', type=Path, default='static/logs/kwta')
     args = parser.parse_args()
     return args
 
@@ -145,9 +160,10 @@ def parse_args():
 def main(args):
     # Basic
     setgpu(args.gpu, gb=10.0)
-    args.eps /= 255
-    args.lr /= 255
-    args.eot *= 2  # due to double-side differentiation
+    eps = args.eps / 255
+    lr = args.lr / 255
+    eot = args.eot * 2  # due to double-side differentiation
+    os.makedirs(args.output, exist_ok=True)
 
     # Load data
     dataset = CIFAR10(args.data_dir, train=False, transform=T.ToTensor())
@@ -163,7 +179,14 @@ def main(args):
     # Load test kit
     test = Test(model)
     test.test_benign(loader)
-    test.test_attack(loader, epsilon=args.eps, lr=args.lr, step=args.step, samples=args.eot)
+    acc_list = test.test_attack(loader, eps=eps, lr=lr, step=args.step, eot=eot)
+
+    # Save
+    df = pd.DataFrame({
+        'Accuracy': acc_list,
+        'PGD Steps': np.arange(10, args.step + 1, 10),
+    })
+    df.to_csv(args.output / f'{args.eps:.1f}_{args.lr:.2f}_{args.step}_{args.eot}.csv', index=False)
 
 
 if __name__ == '__main__':
