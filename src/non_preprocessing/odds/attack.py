@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--eot', type=int, default=1)
     # model & dataset
     parser.add_argument('--model-dir', type=str, default='static/models/models/naturally_trained')
-    parser.add_argument('--test-size', type=int, default=500)
+    parser.add_argument('--test-size', type=int, default=1000)
 
     args = parser.parse_args()
     return args
@@ -48,7 +48,8 @@ def main(args):
     """
     data = CIFAR10()
     x_test, y_test = data.get_set('test')
-    indices = np.random.default_rng(0).permutation(len(x_test))[:args.test_size]
+    # indices = np.random.default_rng(0).permutation(len(x_test))[:args.test_size]
+    indices = np.arange(args.test_size)  # for consistency with the attack paper
     x_test = x_test[indices] * 255
     y_test = y_test[indices]
 

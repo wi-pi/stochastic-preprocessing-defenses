@@ -1,20 +1,25 @@
 exp_name: odds_pgd_untargeted
 module: src.non_preprocessing.odds.attack
-arguments: -b 250 --lr {lr} --step {step} --eot {eot}
-log_file: lr{lr:.1f}_step{step:d}_eot{eot:d}.log
+arguments: -b 250 --lr {lr} --step {step} --eot {eot} --test-size 500
+log_file: lr{lr:.1f}_step{step:d}_eot{eot:d}_first500.log
 
 hparams:
   run1:
-    lr: [0.1]
-    step: [10, 100, 500, 1000, 2000, 4000]
+    lr: [0.1, 0.5]
+    step: [100, 500, 1000, 2000, 4000]
     eot: [1]
 
   run2:
-    lr: [1]
-    step: [10, 100]
+    lr: [0.1, 0.5]
+    step: [100, 500, 1000]
     eot: [10]
 
   run3:
-    lr: [1]
-    step: [10, 100]
+    lr: [0.1, 0.5]
+    step: [100, 500, 1000]
     eot: [20]
+
+  run4:
+    lr: [0.1, 0.5]
+    step: [100, 500]
+    eot: [40]
