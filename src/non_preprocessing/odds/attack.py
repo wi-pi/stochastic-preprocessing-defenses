@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('--eot', type=int, default=1)
+    parser.add_argument('--attack-no-noise-once', action='store_true')
     # model & dataset
     parser.add_argument('--model-dir', type=str, default='static/models/models/naturally_trained')
     parser.add_argument('--test-size', type=int, default=1000)
@@ -43,6 +44,8 @@ def main(args):
     # Basic
     if args.gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    if args.attack_no_noise_once:
+        args.eot += 1
 
     """Load data
     """
@@ -130,7 +133,10 @@ def main(args):
                 else:
                     noise = np.random.normal(0., 1., size=X_adv.shape)
 
-                X_adv_noisy = X_adv + noise * eps_noise
+                if j == 0 and args.attack_no_noise_once:
+                    X_adv_noisy = X_adv
+                else:
+                    X_adv_noisy = X_adv + noise * eps_noise
                 X_adv_noisy = X_adv_noisy.clip(0, 255)
                 loss_npi, grad_npi, preds_npi = sess.run([loss, grad, preds],
                                                          feed_dict={x: X_adv_noisy, target_logits_ph: targets})
