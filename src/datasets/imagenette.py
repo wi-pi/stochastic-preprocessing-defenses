@@ -11,6 +11,10 @@ class ImageNetteDataModule(AbstractBaseDataModule):
     transform_train = T.Compose([T.RandomCrop(224), T.RandomHorizontalFlip(), T.ToTensor()])
     transform_test = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor()])
 
+    def __init__(self, *args, **kwargs):
+        kwargs['test_batch_multiply'] = 3
+        super().__init__(*args, **kwargs)
+
     def setup(self, stage: str = None):
         # full training data
         ds_train_noisy = ImageFolder(self.data_dir / 'train', transform=self.transform_train)

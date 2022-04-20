@@ -11,7 +11,7 @@ class AbstractBaseResNet(pl.LightningModule, abc.ABC):
     Abstract base ResNet for classification.
 
     Criterion: CrossEntropyLoss
-    Optimizer: Adam
+    Optimizer: AdamW
     Scheduler: CosineAnnealing
     """
 
@@ -27,7 +27,7 @@ class AbstractBaseResNet(pl.LightningModule, abc.ABC):
         raise NotImplementedError
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.wd)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.wd)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs)
         return [optimizer], [scheduler]
 

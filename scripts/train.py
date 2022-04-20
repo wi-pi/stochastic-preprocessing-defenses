@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument('-j', '--num-workers', type=int, default=24)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--wd', type=float, default=1e-2)
+    parser.add_argument('--mix', action='store_true')
     # augment defenses
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+', default=[])
     parser.add_argument('-k', '--nb-defenses', type=int, default=1)
@@ -77,6 +78,7 @@ def main(args):
                 save_last=True, save_top_k=1, save_weights_only=True,  # save best + last
             ),
         ],
+        precision=16 if args.mix else 32,
     )
 
     trainer.fit(model, datamodule=dm)
