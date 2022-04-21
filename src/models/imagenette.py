@@ -5,6 +5,10 @@ from src.models.layers import NormalizationLayer
 from src.models.base import AbstractBaseResNet
 
 
+IMAGENETTE_MODELS = {
+    'clean': 'static/models/imagenette/clean-pretrain-70e/checkpoints/epoch53-acc0.969.ckpt',
+}
+
 class ImageNetteResNet(AbstractBaseResNet):
 
     @staticmethod

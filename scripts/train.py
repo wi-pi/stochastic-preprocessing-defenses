@@ -2,12 +2,14 @@ import argparse
 from pathlib import Path
 
 import pytorch_lightning as pl
+import torch
 from loguru import logger
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from configs import DEFENSES, load_defense
 from src.datasets import ImageNetteDataModule, CIFAR10DataModule
-from src.models import CIFAR10ResNet, ImageNetteResNet
+from src.models import CIFAR10ResNet, ImageNetteResNet, CIFAR10_MODELS
+from src.models.imagenette import IMAGENETTE_MODELS
 
 
 def parse_args():
@@ -26,6 +28,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--wd', type=float, default=1e-2)
     parser.add_argument('--mix', action='store_true')
+    parser.add_argument('--load', type=str, choices=IMAGENETTE_MODELS | CIFAR10_MODELS)
     # augment defenses
     parser.add_argument('-d', '--defenses', type=str, choices=DEFENSES, nargs='+', default=[])
     parser.add_argument('-k', '--nb-defenses', type=int, default=1)
@@ -48,9 +51,11 @@ def main(args):
         case 'cifar10':
             model_cls = CIFAR10ResNet
             dm_cls = CIFAR10DataModule
+            weight_path = CIFAR10_MODELS.get(args.load)
         case 'imagenette':
             model_cls = ImageNetteResNet
             dm_cls = ImageNetteDataModule
+            weight_path = IMAGENETTE_MODELS.get(args.load)
         case _:
             raise NotImplementedError(args.data)
 
@@ -60,6 +65,9 @@ def main(args):
 
     # Create pl modules
     model = model_cls(args.lr, args.wd, args.max_epochs)
+    if weight_path:
+        ckpt = torch.load(weight_path)['state_dict']
+        model.load_state_dict(ckpt)
     dm = dm_cls(args.data_dir, args.batch_size, args.num_workers, defense, seed)
     dm.prepare_data()
 

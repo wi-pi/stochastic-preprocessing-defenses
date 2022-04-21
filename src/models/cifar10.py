@@ -24,9 +24,7 @@ def resnet18(weight_file: str | None = None):
 
 
 CIFAR10_MODELS = {
-    'r18': partial(resnet18, 'static/models/cifar10/resnet18/checkpoints/epoch38-acc0.929.ckpt'),
-    'r18.aug3': partial(resnet18, 'static/models/cifar10/augment3/checkpoints/epoch19-acc0.768.ckpt'),
-    'r18.aug4': partial(resnet18, 'static/models/cifar10/augment4/checkpoints/epoch18-acc0.752.ckpt'),
+    'clean': 'static/models/cifar10/clean/checkpoints/epoch69-acc0.930.ckpt',
 }
 
 
