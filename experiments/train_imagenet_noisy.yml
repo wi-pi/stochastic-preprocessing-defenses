@@ -1,0 +1,8 @@
+exp_name: train_imagenette_noisy
+module: scripts.train
+arguments: --data imagenette --load clean -e 70 -v var{var:.2f} -d GaussianNoisePyTorch -p variance={var}
+log_file: var{var:.2f}.log
+
+hparams:
+  default:
+    var: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50]

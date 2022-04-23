@@ -6,7 +6,13 @@ from src.models.base import AbstractBaseResNet
 
 
 IMAGENETTE_MODELS = {
-    'clean': 'static/models/imagenette/clean-pretrain-70e/checkpoints/epoch53-acc0.969.ckpt',
+    'clean': 'static/models/imagenette/clean/checkpoints/epoch53-acc0.969.ckpt',
+    'var0.05': 'static/models/imagenette/var0.05/checkpoints/last.ckpt',
+    'var0.10': 'static/models/imagenette/var0.10/checkpoints/last.ckpt',
+    'var0.15': 'static/models/imagenette/var0.15/checkpoints/last.ckpt',
+    'var0.20': 'static/models/imagenette/var0.20/checkpoints/last.ckpt',
+    'var0.25': 'static/models/imagenette/var0.25/checkpoints/last.ckpt',
+    'var0.30': 'static/models/imagenette/var0.30/checkpoints/last.ckpt',
 }
 
 class ImageNetteResNet(AbstractBaseResNet):
