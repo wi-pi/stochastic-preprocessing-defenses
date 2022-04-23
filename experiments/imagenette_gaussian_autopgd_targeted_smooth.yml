@@ -1,0 +1,22 @@
+exp_name: imagenette_gaussian_autopgd_targeted_smooth
+module: scripts.test_imagenette
+arguments:
+  -d GaussianNoisePyTorch -p variance={var} -m vote -n 200
+  -a auto -t 9 --lr {lr} --step {step} --eot {eot}
+  --load static/models/imagenette/var{var:.2f}/checkpoints/epoch{epoch:02d}.ckpt
+log_file: var{var:.2f}_epoch{epoch:02d}_lr{lr:.1f}_step{step:d}_eot{eot:d}_vote200.log
+
+hparams:
+  default:
+    var: [0.05, 0.10, 0.15, 0.20, 0.25]
+    epoch: [9, 19, 29, 39, 49, 59, 69]
+    lr: [2.0]
+    step: [200, 500, 1000]
+    eot: [1]
+
+  eot10:
+    var: [0.05, 0.10, 0.15, 0.20, 0.25]
+    epoch: [9, 19, 29, 39, 49, 59, 69]
+    lr: [2.0]
+    step: [200, 500, 1000]
+    eot: [10]
