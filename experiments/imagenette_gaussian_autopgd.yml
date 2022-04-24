@@ -22,3 +22,11 @@ hparams:
     step: [200]
     eot: [1]
     target: [-1]
+
+  temp:
+    var: [0.05, 0.15, 0.25, 0.35]
+    epoch: [69]
+    lr: [2.0]
+    step: [200]
+    eot: [1]
+    target: [9, -1]
