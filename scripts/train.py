@@ -75,10 +75,10 @@ def main(args):
     dm.prepare_data()
 
     # Prepare trainer kwargs
-    if args.defense:
-        save_kwargs = dict(save_top_k=-1, every_n_epochs=10)  # save every 10 epochs
+    if args.defenses:
+        save_kwargs = dict(filename='epoch{epoch:02d}', save_top_k=-1, every_n_epochs=1)  # save every 1 epochs
     else:
-        save_kwargs = dict(save_top_k=1)  # save best + last
+        save_kwargs = dict(filename='epoch{epoch:02d}-acc{val_acc:.3f}', save_top_k=1)  # save best + last
 
     # Create trainer
     trainer = pl.Trainer(
@@ -90,7 +90,7 @@ def main(args):
             pl.callbacks.LearningRateMonitor('epoch'),
             pl.callbacks.TQDMProgressBar(),
             pl.callbacks.ModelCheckpoint(
-                filename='epoch{epoch:02d}-acc{val_acc:.3f}', auto_insert_metric_name=False,
+                auto_insert_metric_name=False,
                 monitor='val_acc', mode='max', save_weights_only=True, save_last=True,
                 **save_kwargs
             ),
