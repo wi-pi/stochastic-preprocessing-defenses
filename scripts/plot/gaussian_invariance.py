@@ -38,10 +38,10 @@ def plot_all():
     ax1.plot(x, pretrain_acc_benign, 'g-', label='benign (high inv.)')
 
     # asr
-    ax2.plot(x, normal_asr_adv_untargeted, 'r^--', label='untargeted (low inv.)')
-    ax2.plot(x, pretrain_asr_adv_untargeted, 'r^-', label='untargeted (high inv.)')
-    ax2.plot(x, normal_asr_adv, 'ro--', label='targeted (low inv.)')
-    ax2.plot(x, pretrain_asr_adv, 'ro-', label='targeted (high inv.)')
+    ax2.plot(x, normal_asr_adv_untargeted, 'ro--', label='untargeted (low inv.)')
+    ax2.plot(x, pretrain_asr_adv_untargeted, 'ro-', label='untargeted (high inv.)')
+    ax2.plot(x, normal_asr_adv, 'r^--', label='targeted (low inv.)')
+    ax2.plot(x, pretrain_asr_adv, 'r^-', label='targeted (high inv.)')
 
     ax1.set_ylim(0, 100)
     ax2.set_ylim(0, 100)
