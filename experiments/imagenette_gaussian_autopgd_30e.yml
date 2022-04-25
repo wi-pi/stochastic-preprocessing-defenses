@@ -1,0 +1,16 @@
+exp_name: imagenette_gaussian_autopgd_30e
+module: scripts.test_imagenette
+arguments:
+  -d GaussianNoisePyTorch -p variance={var} -m vote -n 200
+  -a auto -t {target} --lr {lr} --step {step} --eot {eot}
+  --load static/models/imagenette/30e_var{var:.2f}/checkpoints/epoch{epoch:02d}.ckpt
+log_file: var{var:.2f}_epoch{epoch:02d}_lr{lr:.1f}_step{step:d}_eot{eot:d}_vote200_target{target}.log
+
+hparams:
+  all:
+    target: [-1, 9]
+    var: [0.10, 0.20, 0.30, 0.40, 0.50]
+    epoch: [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22]
+    lr: [2.0]
+    step: [200]
+    eot: [1]

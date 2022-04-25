@@ -20,16 +20,9 @@ def load_defense(defenses: list[str], nb_samples: int | None = None, params: lis
 
     match len(defenses):
 
-        # Hard-coded ensemble
+        # No defense
         case 0:
-            defense = Ensemble(
-                preprocessors=[
-                    Gaussian(kernel_size=(0, 6), sigma=(1.0, 2.0)),
-                    Median(kernel_size=(0, 6)),
-                    JPEG(quality=(55, 75)),
-                ],
-                nb_samples=nb_samples,
-            )
+            defense = None
 
         # Single defense with additional kwargs
         case 1:

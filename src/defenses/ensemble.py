@@ -11,7 +11,7 @@ class Ensemble(InstancePreprocessorPyTorch):
     A preprocessing defense that ensembles multiple preprocessors at random.
     """
 
-    def __init__(self, preprocessors: list[PreprocessorPyTorch], nb_samples: int | None = None):
+    def __init__(self, preprocessors: list[InstancePreprocessorPyTorch], nb_samples: int | None = None):
         """
         A preprocessing defense that ensembles multiple preprocessors at random.
 
@@ -29,6 +29,11 @@ class Ensemble(InstancePreprocessorPyTorch):
         for preprocess in sample(self.preprocessors, self.nb_samples):
             x, y = preprocess.forward(x, y)
         return x, y
+
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+        for preprocess in sample(self.preprocessors, self.nb_samples):
+            x = preprocess.forward_one(x)
+        return x
 
     def __repr__(self):
         fmt_string = f'{self.__class__.__name__}[k={self.nb_samples}](\n'
