@@ -142,9 +142,16 @@ def main(args):
             if args.metric == 'acc':
                 df['adaptive'] = 100 - df['adaptive']
 
+            # hotfix for noise_pgd_untargeted
+            df = df.append([
+                dict(lr=2.0, step=1000, eot=1, adaptive=100),
+                dict(lr=2.0, step=1000, eot=5, adaptive=100),
+                dict(lr=2.0, step=1000, eot=10, adaptive=100),
+            ], ignore_index=True)
+
             match args.by:
                 case 'lr':
-                    heatmap.plot_by_lr(df, tag=experiment.name, lr_list=[0.5, 1.0, 2.0, 4.0, 8.0])
+                    heatmap.plot_by_lr(df, tag=experiment.name, lr_list=[1.0, 2.0])
                 case 'var':
                     heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.25, 0.50, 1.00], lr_list=[0.5, 1.0])
                 case _:
