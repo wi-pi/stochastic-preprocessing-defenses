@@ -2,6 +2,7 @@ import kornia
 import skimage
 import torch
 import torchvision.transforms.functional as F
+from kornia.augmentation import RandomRotation
 
 from src.defenses.base import InstancePreprocessorPyTorch, bpda_identity
 from src.defenses.utils import rand
@@ -102,3 +103,15 @@ class Crop(InstancePreprocessorPyTorch):
         pt, pl = rand((0, max_xy), size=2)
         x = F.crop(x, top=pt, left=pl, height=self.crop_size, width=self.crop_size)
         return x
+
+
+class Rotation(InstancePreprocessorPyTorch):
+    params = ['degree']
+
+    def __init__(self, degree: int = 45):
+        super().__init__()
+        self.degree = degree
+        self.rotate = RandomRotation(degrees=45.0, p=1.0)
+
+    def forward_one(self, x: torch.Tensor) -> torch.Tensor:
+        return self.rotate(x)[0]
