@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -30,57 +31,34 @@ def main():
     targeted = df[df.target == 9]
 
     # plot accuracy (by epoch)
-    plt.figure()
-    sns.lineplot(data=untargeted, x='epoch', y='benign', hue='var')
-    plt.xlabel('Epoch')
+    fig, ax = plt.subplots(figsize=(4, 3), constrained_layout=True)
+    sns.lineplot(data=untargeted, x='epoch', y='benign', hue='var', ax=ax)
+    plt.xlabel('Fine-tune Epochs')
     plt.ylabel('Benign Accuracy (%)')
     plt.ylim(0, 102)
-    plt.title('Accuracy of Fine-tuning on Defense')
     plt.savefig(f'static/plots/invariance_gaussian_accuracy.pdf')
 
     # plot untargeted (by epoch)
-    plt.figure()
-    sns.lineplot(data=untargeted, x='epoch', y='adaptive', hue='var')
-    plt.xlabel('Epoch')
+    fig, ax = plt.subplots(figsize=(4, 3), constrained_layout=True)
+    sns.lineplot(data=untargeted, x='epoch', y='adaptive', hue='var', ax=ax)
+    plt.xlabel('Fine-tune Epochs')
     plt.ylabel('Attack Success Rate (%)')
-    plt.ylim(0, 102)
-    plt.title('Untargeted Attacks')
+    # plt.ylim(0, 102)
+    plt.legend(title='Variance', loc='lower right')
     plt.savefig(f'static/plots/invariance_gaussian_untargeted_by_epoch.pdf')
 
     # plot targeted (by epoch)
-    plt.figure()
-    sns.lineplot(data=targeted, x='epoch', y='adaptive', hue='var')
-    plt.xlabel('Epoch')
+    fig, ax = plt.subplots(figsize=(4, 3), constrained_layout=True)
+    sns.lineplot(data=targeted, x='epoch', y='adaptive', hue='var', ax=ax)
+    plt.xlabel('Fine-tune Epochs')
     plt.ylabel('Attack Success Rate (%)')
-    plt.ylim(0, 102)
-    plt.title('Targeted Attacks')
+    # plt.ylim(0, 102)
+    plt.legend(title='Variance', loc='lower right')
     plt.savefig(f'static/plots/invariance_gaussian_targeted_by_epoch.pdf')
-
-    # plot all (by var)
-    fig, ax1 = plt.subplots(constrained_layout=True)
-    ax2 = ax1.twinx()
-
-    # acc
-    ax1.plot(x, untargeted[untargeted.epoch == 0].benign, 'g--', label='benign (low inv.)')
-    ax1.plot(x, untargeted[untargeted.epoch == 9].benign, 'g-', label='benign (high inv.)')
-
-    # asr
-    ax2.plot(x, untargeted[untargeted.epoch == 0].adaptive, 'ro--', label='untargeted (low inv.)')
-    ax2.plot(x, untargeted[untargeted.epoch == 9].adaptive, 'ro-', label='untargeted (high inv.)')
-    ax2.plot(x, targeted[targeted.epoch == 0].adaptive, 'r^--', label='targeted (low inv.)')
-    ax2.plot(x, targeted[targeted.epoch == 9].adaptive, 'r^-', label='targeted (high inv.)')
-
-    ax1.set_ylim(0, 100)
-    ax2.set_ylim(0, 100)
-    ax1.set_xlabel('Variance')
-    ax1.set_ylabel('Benign Accuracy (%)', color='g')
-    ax2.set_ylabel('Success Attack Rate (%)', color='r')
-
-    plt.title(f'Attacks on Gaussian-Defended ImageNette')
-    plt.xticks(x)
-    fig.legend(loc='lower left', bbox_to_anchor=(0, 0), bbox_transform=ax1.transAxes)
-    plt.savefig(f'static/plots/invariance_gaussian_all_by_var.pdf')
 
 
 if __name__ == '__main__':
+    mpl.rcParams['font.family'] = "Times"
+    mpl.rcParams['mathtext.fontset'] = "cm"
+    mpl.rcParams['font.size'] = 13
     main()

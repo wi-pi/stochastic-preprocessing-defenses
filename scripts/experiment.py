@@ -35,12 +35,23 @@ class Experiment(object):
         """
         with config_file.open() as fp:
             self.config = Config(**yaml.safe_load(fp))
+            self.shared_hparams = self.config.hparams.pop('_', {})
+
         self.runs = runs or self.config.hparams.keys()
         self.log_dir = log_dir / self.config.exp_name
 
     def iter_hparams(self) -> Iterator[dict]:
         """Iterate over ALL combinations of arguments."""
         for hparam in map(self.config.hparams.get, self.runs):
+            # union shared hparams
+            hparam |= self.shared_hparams
+
+            # convert scalar to list
+            for k, v in hparam.items():
+                if not isinstance(v, list):
+                    hparam[k] = [v]
+
+            # yield all combinations
             for vals in product(*hparam.values()):
                 yield dict(zip(hparam.keys(), vals))
 
@@ -90,26 +101,25 @@ class Heatmap(object):
 
     def plot_by_lr(self, df: pd.DataFrame, tag: str, lr_list: list[float]):
         for lr in lr_list:
-            self.heatmap(df[df['lr'] == lr], f'{self.metric} (%) with LR = {lr:.1f}', f'{tag}_lr{lr:.1f}.pdf')
+            self.heatmap(df[df['lr'] == lr], f'{self.metric} (%)', f'{tag}_lr{lr:.1f}.pdf')
 
-        self.heatmap(df, f'{self.metric} (%) with LR = Best', f'{tag}_best.pdf')
+        self.heatmap(df, f'{self.metric} (%)', f'{tag}_best.pdf')
 
     def plot_by_var_and_lr(self, df: pd.DataFrame, tag: str, var_list: list[float], lr_list: list[float]):
         for var in var_list:
             df_var = df[df['var'] == var]
 
             for lr in lr_list:
-                title = f'{self.metric} (%) with VAR = {var:.2f} LR = {lr:.1f}'
-                self.heatmap(df_var[df['lr'] == lr], title, f'{tag}_var{var:.2f}_lr{lr:.1f}.pdf')
+                self.heatmap(df_var[df['lr'] == lr], f'{self.metric} (%)', f'{tag}_var{var:.2f}_lr{lr:.1f}.pdf')
 
-            self.heatmap(df_var, f'{self.metric} (%) with VAR = {var:.2f} LR = Best', f'{tag}_var{var:.2f}_best.pdf')
+            self.heatmap(df_var, f'{self.metric} (%)', f'{tag}_var{var:.2f}_best.pdf')
 
     def heatmap(self, df: pd.DataFrame, title: str, filename: str):
         plt.figure(constrained_layout=True)
-        sns.set(font_scale=1.2)
+        sns.set(font_scale=1.4)
         df = df.pivot_table(values='adaptive', index='eot', columns='step', aggfunc=self.agg)
-        ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', cmap='Blues', annot_kws={'size': 12},
-                         square=True, cbar=False)
+        ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', cmap='Blues', annot_kws={'size': 14}, square=True,
+                         cbar=False)
         ax.invert_yaxis()
         plt.xlabel('PGD Steps')
         plt.ylabel('EOT Samples')
@@ -153,7 +163,8 @@ def main(args):
                 case 'lr':
                     heatmap.plot_by_lr(df, tag=experiment.name, lr_list=[1.0, 2.0])
                 case 'var':
-                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.25, 0.50, 1.00], lr_list=[0.5, 1.0])
+                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.25, 0.50, 1.00],
+                                               lr_list=[0.5, 1.0, 2.0, 4.0])
                 case _:
                     raise NotImplementedError
 
