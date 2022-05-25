@@ -1,6 +1,6 @@
 # On the Limitations of Stochastic Pre-processing Defenses
 
-This repository is the official implementation of Paper 3796.
+This repository is the official implementation of *On the Limitations of Stochastic Pre-processing Defenses*.
 
 ## Requirements
 
@@ -18,7 +18,7 @@ pip install -r requirements.txt
 ### Datasets
 
 To prepare ImageNet:
-* Download the validation set from www.image-net.org
+* Download the validation set from https://www.image-net.org
 * Extract to `./static/datasets/` so that the file structure becomes:
     ```
     src/
@@ -58,6 +58,18 @@ To prepare models fine-tuned on ImageNet and Gaussian noise
       noise_0.25/checkpoint.pth.tar
       noise_0.50/checkpoint.pth.tar
     ```
+
+To prepare models fine-tuned on ImageNette
+* Download models from https://drive.google.com/drive/folders/190hHjA8w5zXJAN8WHMDmXsGBxh8tK_or
+* Extract to `./static/models/`
+
+We provide three models pre-trained on ImageNette:
+
+| Filename                                  | Defenses                          | Top-1 Accuracy (%) |
+|-------------------------------------------|-----------------------------------|:------------------:|
+| `ResNet34-ImageNette-Clean.ckpt`          | N/A                               |       96.31%       |
+| `ResNet34-ImageNette-NoiseInjection.ckpt` | Noise Injection                   |       94.65%       |
+| `ResNet34-ImageNette-Gaussian0.50.ckpt`   | Randomized Smoothing (sigma 0.50) |       92.36%       |
 
 ## Usage
 
@@ -113,7 +125,7 @@ To evaluate Noise Injection on the model *before* fine-tuning:
 python -m scripts.test_imagenette \
     --load path/to/your/not/fine-tuned/model.ckpt \
     --mode vote --repeat 500 \
-    --data-dir static/datasets/imagenette2-320 --data-skip 5 --batch 250 \
+    --data-dir static/datasets/imagenette2-320 --data-skip 5 --batch 100 \
     --attack pgd --norm inf --eps 8 --lr 1 --step 50 --eot 1 --target 9 --random-init 1 \
     --defenses NoiseInjectionPyTorch
 ```
@@ -124,7 +136,7 @@ To evaluate Noise Injection on the model *after* fine-tuning:
 python -m scripts.test_imagenette \
     --load path/to/your/fine-tuned/model.ckpt \
     --mode vote --repeat 500 \
-    --data-dir static/datasets/imagenette2-320 --data-skip 5 --batch 250 \
+    --data-dir static/datasets/imagenette2-320 --data-skip 5 --batch 100 \
     --attack pgd --norm inf --eps 8 --lr 1 --step 50 --eot 1 --target 9 --random-init 1 \
     --defenses NoiseInjectionPyTorch
 ```
