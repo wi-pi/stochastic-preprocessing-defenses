@@ -60,7 +60,7 @@ To prepare models fine-tuned on ImageNet and Gaussian noise
     ```
 
 To prepare models fine-tuned on ImageNette
-* Download models from https://drive.google.com/drive/folders/190hHjA8w5zXJAN8WHMDmXsGBxh8tK_or
+* Download models from the anonymous Google Drive https://drive.google.com/drive/folders/1nYEC1BbY9DGVCJeqFnHU6aQdnkRteOfb
 * Extract to `./static/models/`
 
 We provide three models pre-trained on ImageNette:
