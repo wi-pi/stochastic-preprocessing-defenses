@@ -41,24 +41,28 @@ def main():
     # plot untargeted (by epoch)
     fig, ax = plt.subplots(figsize=(4, 3), constrained_layout=True)
     sns.lineplot(data=untargeted, x='epoch', y='adaptive', hue='var', ax=ax)
-    plt.xlabel('Fine-tune Epochs')
-    plt.ylabel('Attack Success Rate (%)')
+    plt.xlabel('# Epochs', fontsize=16)
+    plt.ylabel('Attack Success Rate (%)', fontsize=16)
+    plt.xticks(ticks=[0, 5, 10, 15, 20], fontsize=16)
+    plt.yticks(fontsize=16)
     # plt.ylim(0, 102)
-    plt.legend(title='Variance', loc='lower right')
+    plt.legend(title=r'Noise ($\sigma$)', loc='lower right')
     plt.savefig(f'static/plots/invariance_gaussian_untargeted_by_epoch.pdf')
 
     # plot targeted (by epoch)
     fig, ax = plt.subplots(figsize=(4, 3), constrained_layout=True)
     sns.lineplot(data=targeted, x='epoch', y='adaptive', hue='var', ax=ax)
-    plt.xlabel('Fine-tune Epochs')
-    plt.ylabel('Attack Success Rate (%)')
+    plt.xlabel('# Epochs', fontsize=16)
+    plt.ylabel('Attack Success Rate (%)', fontsize=16)
+    plt.xticks(ticks=[0, 5, 10, 15, 20], fontsize=16)
+    plt.yticks(fontsize=16)
     # plt.ylim(0, 102)
-    plt.legend(title='Variance', loc='lower right')
+    plt.legend(title=r'Noise ($\sigma$)', loc='lower right')
     plt.savefig(f'static/plots/invariance_gaussian_targeted_by_epoch.pdf')
 
 
 if __name__ == '__main__':
     mpl.rcParams['font.family'] = "Times"
     mpl.rcParams['mathtext.fontset'] = "cm"
-    mpl.rcParams['font.size'] = 13
+    mpl.rcParams['font.size'] = 14
     main()

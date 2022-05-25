@@ -31,8 +31,9 @@ def parse_args():
     parser.add_argument('--step', type=int, default=10)
     parser.add_argument('--eot', type=int, default=1)
     parser.add_argument('--attack-no-noise-once', action='store_true')
+    parser.add_argument('--eps-noise', type=float, default=30.0)
     # model & dataset
-    parser.add_argument('--model-dir', type=str, default='static/models/models/naturally_trained')
+    parser.add_argument('--model-dir', type=str, default='static/models/odds')
     parser.add_argument('--test-size', type=int, default=1000)
 
     args = parser.parse_args()
@@ -114,7 +115,7 @@ def main(args):
         if multi_noise:
             eps_noise = 0.01 * 255
         else:
-            eps_noise = 30.0
+            eps_noise = args.eps_noise
 
         for i in trange(args.step, desc='PGD'):
             # loss_np, grad_np, preds_np = sess.run([loss, grad, preds], feed_dict={x: X_adv, target_logits_ph: targets})

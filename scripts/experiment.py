@@ -6,6 +6,7 @@ from itertools import product
 from pathlib import Path
 from typing import Iterator
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -116,9 +117,10 @@ class Heatmap(object):
 
     def heatmap(self, df: pd.DataFrame, title: str, filename: str):
         plt.figure(constrained_layout=True)
-        sns.set(font_scale=1.4)
+        sns.set(font_scale=2)
+        mpl.rcParams['font.family'] = "Times New Roman"
         df = df.pivot_table(values='adaptive', index='eot', columns='step', aggfunc=self.agg)
-        ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.1f', cmap='Blues', annot_kws={'size': 14}, square=True,
+        ax = sns.heatmap(df, vmin=0, vmax=100, annot=True, fmt='.3g', cmap='Blues', annot_kws={'size': 20}, square=True,
                          cbar=False)
         ax.invert_yaxis()
         plt.xlabel('PGD Steps')
@@ -163,7 +165,7 @@ def main(args):
                 case 'lr':
                     heatmap.plot_by_lr(df, tag=experiment.name, lr_list=[1.0, 2.0])
                 case 'var':
-                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.25, 0.50, 1.00],
+                    heatmap.plot_by_var_and_lr(df, tag=experiment.name, var_list=[0.25, 0.50],
                                                lr_list=[0.5, 1.0, 2.0, 4.0])
                 case _:
                     raise NotImplementedError

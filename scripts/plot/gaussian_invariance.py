@@ -11,6 +11,7 @@ def plot(tag: str, normal_asr: list, pretrain_asr: list):
     ax1.plot(x, normal_acc_benign, 'g--', lw=2.5)
     ax1.plot(x, pretrain_acc_benign, 'g-', lw=2.5)
     ax1.set_ylim(-2, 102)
+    ax1.set_yticks(range(0, 101, 20))
     ax1.tick_params(axis='y', labelcolor='g')
     ax1.set_ylabel('Benign Accuracy (%)', color='g')
 
@@ -20,11 +21,12 @@ def plot(tag: str, normal_asr: list, pretrain_asr: list):
     ax2.plot(x, normal_asr, 'r--', lw=2.5)
     ax2.plot(x, pretrain_asr, 'r-', lw=2.5)
     ax2.set_ylim(-2, 102)
-    ax2.tick_params(axis='y', labelcolor='g')
+    ax2.set_yticks(range(0, 101, 20))
+    ax2.tick_params(axis='y', labelcolor='r')
     ax2.set_ylabel('Attack Success Rate (%)', color='r')
 
     plt.xticks(x[1::2])
-    plt.xlabel('Variance of Gaussian Noise')
+    ax1.set_xlabel(r'Noise Level ($\sigma$)')
     plt.legend(loc='lower left')
 
     # plt.show()
@@ -34,7 +36,7 @@ def plot(tag: str, normal_asr: list, pretrain_asr: list):
 if __name__ == '__main__':
     mpl.rcParams['font.family'] = "Times"
     mpl.rcParams['mathtext.fontset'] = "cm"
-    mpl.rcParams['font.size'] = 20
+    mpl.rcParams['font.size'] = 24
 
     """
     >>> df = df.sort_values(['target', 'var'])
