@@ -1,0 +1,14 @@
+exp_name: gaussian_pgd_targeted_smooth_l2
+module: scripts.test_imagenet
+arguments:
+  -d GaussianNoisePyTorchNoClip -p variance={var} -m vote -n 200
+  -a pgd --norm 2 --eps 5.0 --lr {lr} --step {step} --eot {eot} -t 999
+  --load r50-s{var:.2f} -b 100
+log_file: var{var:.2f}_lr{lr:.2f}_step{step:d}_eot{eot:d}_vote200.log
+
+hparams:
+  all:
+    lr: [1.0]
+    eot: [1, 5, 10]
+    step: [10, 20, 50, 100, 200, 500, 1000]
+    var: [0.25, 0.50]

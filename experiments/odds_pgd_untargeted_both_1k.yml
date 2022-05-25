@@ -1,0 +1,12 @@
+exp_name: odds_pgd_untargeted
+module: src.non_preprocessing.odds.attack
+arguments: -b 250 --lr {lr} --step {step} --eot {eot} --test-size 1000 --attack-no-noise-once --eps-noise {eps}
+log_file: lr{lr:.2f}_step{step:d}_eot{eot:d}_eps{eps:.1f}_first1000_both.log
+
+hparams:
+
+  run1:
+    lr: [0.05, 0.10, 0.20]
+    step: [4000, 8000]
+    eps: [10, 20, 30]
+    eot: [1]
