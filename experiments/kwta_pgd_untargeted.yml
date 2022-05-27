@@ -1,0 +1,20 @@
+exp_name: kwta_pgd_untargeted
+module: src.non_preprocessing.kwta.attack
+arguments: -b 700 --lr {lr} --step {step} --eot {eot} --data-skip 10
+log_file: lr{lr:.1f}_step{step:d}_eot{eot:d}.log
+
+hparams:
+  run1:
+    lr: [0.1, 0.2, 0.5, 1.0]
+    step: [40000]
+    eot: [1]
+
+  run2:
+    lr: [0.5, 1.0, 2.0, 5.0]
+    step: [20000]
+    eot: [100]
+
+  run3:
+    lr: [0.5, 1.0, 2.0, 5.0]
+    step: [100]
+    eot: [1000]

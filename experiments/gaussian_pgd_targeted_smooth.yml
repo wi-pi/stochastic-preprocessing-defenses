@@ -5,7 +5,7 @@ log_file: var{var:.1f}_lr{lr:.1f}_step{step:d}_eot{eot:d}_{mode}{repeat}.log
 
 hparams:
   var025:
-    lr: [1.0]
+    lr: [0.5, 1.0]
     eot: [1, 5, 10]
     step: [10, 20, 50, 100, 200, 500, 1000]
     var: [0.25]
@@ -13,7 +13,7 @@ hparams:
     repeat: [20]
 
   var050:
-    lr: [1.0]
+    lr: [0.5, 1.0]
     eot: [1, 5, 10]
     step: [10, 20, 50, 100, 200, 500, 1000]
     var: [0.50]
@@ -21,33 +21,17 @@ hparams:
     repeat: [20]
 
   var100:
-    lr: [1.0]
+    lr: [0.5, 1.0]
     eot: [1, 5, 10]
     step: [10, 20, 50, 100, 200, 500, 1000]
     var: [1.00]
     mode: [vote]
     repeat: [20]
 
-  var025-lr05:
-    lr: [0.5]
-    eot: [1, 5, 10]
+  more:
+    lr: [2.0, 4.0]
     step: [10, 20, 50, 100, 200, 500, 1000]
-    var: [0.25]
+    eot: [1, 5, 10, 20]
+    var: [0.25, 0.50]
     mode: [vote]
-    repeat: [20]
-
-  var050-lr05:
-    lr: [0.5]
-    eot: [1, 5, 10]
-    step: [10, 20, 50, 100, 200, 500, 1000]
-    var: [0.50]
-    mode: [vote]
-    repeat: [20]
-
-  var100-lr05:
-    lr: [0.5]
-    eot: [1, 5, 10]
-    step: [10, 20, 50, 100, 200, 500, 1000]
-    var: [1.00]
-    mode: [vote]
-    repeat: [20]
+    repeat: [200]

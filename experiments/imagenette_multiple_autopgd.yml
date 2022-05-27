@@ -1,0 +1,45 @@
+exp_name: imagenette_multiple_autopgd
+module: scripts.test_imagenette
+arguments:
+  -d {defenses} -k {k} -m vote -n 200
+  -a auto -t {target} --lr {lr} --step {step} --eot {eot}
+  --load static/models/imagenette/v{v}k{k}/checkpoints/epoch{epoch:02d}.ckpt
+log_file: v{v}k{k}_epoch{epoch:02d}_lr{lr:.1f}_step{step:d}_eot{eot:d}_vote200_target{target}.log
+
+hparams:
+  _:
+    target: [-1, 9]
+    epoch: [-1, 0, 5, 10, 15, 20, 25, 29]
+    lr: [2.0]
+    step: [200]
+    eot: [1]
+
+  stack1:
+    v: 1
+    k: [1]
+    defenses: "NoiseInjectionPyTorch"
+
+  stack2:
+    v: 2
+    k: [2]
+    defenses: "NoiseInjectionPyTorch Gaussian"
+
+  stack3:
+    v: 3
+    k: [3]
+    defenses: "NoiseInjectionPyTorch Gaussian Median"
+
+  stack4:
+    v: 4
+    k: [4]
+    defenses: "NoiseInjectionPyTorch Gaussian Median Swirl"
+
+  stack5:
+    v: 5
+    k: [5]
+    defenses: "NoiseInjectionPyTorch Gaussian Median Swirl Quantization"
+
+  stack6:
+    v: 6
+    k: [6]
+    defenses: "NoiseInjectionPyTorch Gaussian Median Swirl Quantization FFTPerturbation"

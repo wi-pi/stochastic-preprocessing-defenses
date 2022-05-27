@@ -1,4 +1,4 @@
-adversarial-robustness-toolbox
+adversarial-robustness-toolbox==1.9.1
 loguru
 gpustat
 IPython
@@ -11,3 +11,5 @@ tqdm
 pyyaml
 scipy==1.7.3
 pytorch-lightning
+foolbox==3.0.0
+jupyter

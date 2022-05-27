@@ -1,0 +1,35 @@
+exp_name: train_imagenette_multiple_transformation
+module: scripts.train
+arguments: --data imagenette --load clean -e 30 -v v{version}k{k} -d {defenses} -k {k}
+log_file: v{version}k{k}.log
+
+hparams:
+  stack1:
+    k: [1]
+    version: [1]
+    defenses: ["NoiseInjectionPyTorch"]
+
+  stack2:
+    k: [1, 2]
+    version: [2]
+    defenses: ["NoiseInjectionPyTorch Gaussian"]
+
+  stack3:
+    k: [1, 2, 3]
+    version: [3]
+    defenses: ["NoiseInjectionPyTorch Gaussian Median"]
+
+  stack4:
+    k: [1, 2, 3, 4]
+    version: [4]
+    defenses: ["NoiseInjectionPyTorch Gaussian Median Swirl"]
+
+  stack5:
+    k: [1, 2, 3, 4, 5]
+    version: [5]
+    defenses: ["NoiseInjectionPyTorch Gaussian Median Swirl Quantization"]
+
+  stack6:
+    k: [1, 2, 3, 4, 5, 6]
+    version: [6]
+    defenses: ["NoiseInjectionPyTorch Gaussian Median Swirl Quantization FFTPerturbation"]

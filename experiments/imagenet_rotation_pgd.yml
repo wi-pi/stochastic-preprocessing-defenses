@@ -1,0 +1,22 @@
+exp_name: imagenet_rotation_pgd
+module: scripts.test_imagenet
+arguments:
+  -d Rotation -p degree={degree} -m vote -n 1
+  -a pgd -t {target} --lr {lr} --step {step} --eot {eot}
+  --load r50 -b 100 --test-non-adaptive
+log_file: degree{degree}_lr{lr:.1f}_step{step:d}_eot{eot:d}_vote1_target{target}.log
+
+hparams:
+  _:
+    degree: 90
+    target: [-1, 999]
+
+  pgd:
+    step: 50
+    lr: [1.0, 2.0]
+    eot: 1
+
+  eot:
+    step: 10
+    lr: [1.0, 2.0]
+    eot: 5

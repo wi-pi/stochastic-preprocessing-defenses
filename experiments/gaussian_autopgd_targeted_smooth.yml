@@ -1,0 +1,26 @@
+exp_name: gaussian_autopgd_targeted_smooth
+module: scripts.test_imagenet
+arguments: -d GaussianNoisePyTorchNoClip -k 1 -n {repeat} -t 999 --lr {lr} --step {step} --eot {eot} -m {mode} -p variance={var} --load {model} -b 100 -a auto
+log_file: var{var:.1f}_model{model}_lr{lr:.1f}_step{step:d}_eot{eot:d}_vote1000.log
+
+hparams:
+  var025:
+    lr: [1.0]
+    eot: [1, 10]
+    step: [200, 500, 1000, 2000]
+    var: [0.25]
+    model: [r50, r50-s0.25]
+
+  var050:
+    lr: [1.0]
+    eot: [1, 10]
+    step: [200, 500, 1000, 2000]
+    var: [0.50]
+    model: [r50, r50-s0.50]
+
+  var100:
+    lr: [1.0]
+    eot: [1, 10]
+    step: [200, 500, 1000, 2000]
+    var: [1.00]
+    model: [r50, r50-s1.00]
