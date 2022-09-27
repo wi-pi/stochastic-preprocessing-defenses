@@ -161,7 +161,8 @@ If you find this work useful in your research, please cite our paper with the fo
 @inproceedings{gao2022limitations,
   author    = {Yue Gao and Ilia Shumailov and Kassem Fawaz and Nicolas Papernot},
   title     = {On the Limitations of Stochastic Pre-processing Defenses},
-  booktitle = {Advances in Neural Information Processing Systems},
-  year      = {2022}
+  booktitle = {Thirty-Sixth Conference on Neural Information Processing Systems},
+  year      = {2022},
+  url       = {https://openreview.net/forum?id=P_eBjUlzlV}
 }
 ```
