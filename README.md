@@ -60,7 +60,7 @@ To prepare models fine-tuned on ImageNet and Gaussian noise
     ```
 
 To prepare models fine-tuned on ImageNette
-* Download models from the anonymous Google Drive https://drive.google.com/drive/folders/1nYEC1BbY9DGVCJeqFnHU6aQdnkRteOfb
+* Download models from the anonymous Google Drive https://drive.google.com/drive/folders/15qnyQ8Q8t271vbcfvpm_CpiV1xavLaGP
 * Extract to `./static/models/`
 
 We provide three models pre-trained on ImageNette:
@@ -151,4 +151,17 @@ python -m scripts.visualize_defense \
     --id 0 -n 10 \
     --defense Rotation --params degree 90 \
     --save path/to/outputs --tag rotation90
+```
+
+## Citation
+
+If you find this work useful in your research, please cite our paper with the following BibTeX:
+
+```bib
+@inproceedings{gao2022limitations,
+  author    = {Yue Gao and Ilia Shumailov and Kassem Fawaz and Nicolas Papernot},
+  title     = {On the Limitations of Stochastic Pre-processing Defenses},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2022}
+}
 ```
