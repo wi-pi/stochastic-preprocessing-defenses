@@ -2,6 +2,10 @@
 
 This repository is the official implementation of *On the Limitations of Stochastic Pre-processing Defenses*.
 
+[[Paper](https://arxiv.org/pdf/2206.09491)] [[Recorded Talk](https://neurips.cc/virtual/2022/poster/54675)] [[Full Slides](https://pages.cs.wisc.edu/~gy/assets/pdf/stochastic-preprocessing-slides.pdf)]
+
+[![Poster](figs/poster.jpg)](https://neurips.cc/media/PosterPDFs/NeurIPS%202022/54675.png)
+
 ## Requirements
 
 ### Environments
